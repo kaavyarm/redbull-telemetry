@@ -1,0 +1,5 @@
+fastf1==3.8.3
+pandas==2.3.3
+pyarrow==25.0.1
+psycopg2-binary==2.9.12
+sentry-sdk==2.68.0

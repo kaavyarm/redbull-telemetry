@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #010102;
+
+  --glass: rgba(4, 5, 8, 0.58);
+  --glass-deep: rgba(2, 2, 4, 0.72);
+  --glass-light: rgba(255, 255, 255, 0.055);
+
+  --border: rgba(255, 255, 255, 0.105);
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-blood: rgba(115, 12, 28, 0.48);
+
+  --text: #f0f0f2;
+  --muted: #91949d;
+  --muted-2: #5e626c;
+
+  --blood: #430610;
+  --blood-mid: #650918;
+  --blood-bright: #8b0e1f;
+  --blood-glow: rgba(115, 12, 28, 0.28);
+
+  --amber: #c89132;
+  --green: #51e07f;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Rajdhani", Inter, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+button {
+  font: inherit;
+}

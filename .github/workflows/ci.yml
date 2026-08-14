@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"   # matches .venv locally; required for FastF1's
+                           # scientific-stack wheel compatibility
+  NODE_VERSION: "22"       # vite 8 requires ^20.19.0 || >=22.12.0
+
+jobs:
+  lint-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install ruff==0.16.3
+      - run: ruff check .
+
+  test-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint-js, test-js]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      # No VITE_SUPABASE_* env vars needed here -- src/lib/supabaseClient.js's
+      # "missing config" check only throws when the bundle actually runs in a
+      # browser, not during Vite's build/transform step. Confirmed locally
+      # (npm run build succeeds with neither var set) before relying on it.
+      - run: npm run build
+
+  # Fast, no database needed -- pure-function unit tests only. The same
+  # DATABASE_URL-gated tests run for real (not skipped) in
+  # test-python-integration below; this job is here so a schema/logic bug
+  # in the ~90% of the suite that doesn't need Postgres fails in seconds,
+  # before paying for a service-container spin-up.
+  test-python-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - run: pytest tests/ -v
+
+  # Real Postgres, real schema, real (if telemetry-trimmed) FastF1 data --
+  # exercises RLS policies (tests/test_rls.py), SQL-vs-pandas parity
+  # (tests/test_analytics_parity.py) and the derived-metrics pipeline
+  # (tests/test_analytics_service.py's integration test), none of which can
+  # run against a mock. Gated behind lint-python/test-python-unit passing
+  # first (see test-python-unit's comment).
+  test-python-integration:
+    runs-on: ubuntu-latest
+    needs: [lint-python, test-python-unit]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - name: Apply schema (auth shim reproduces Supabase's auth.uid()/roles on plain Postgres)
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/sql/auth_shim.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/views.sql
+      - name: Seed tracked test fixtures (tests/fixtures/2026/)
+        run: python scripts/ci_seed_test_data.py
+      - name: Run full suite against real seeded data
+        run: pytest tests/ -v
+
+  # Single required status check for branch protection to point at (see
+  # data/PHASE11_TESTING_CI.md for the one-time manual step of actually
+  # turning that on -- GitHub's branch protection settings aren't something
+  # a workflow file can configure, they need repo admin access via the UI
+  # or `gh api`, and this repo has no GitHub remote yet).
+  ci:
+    runs-on: ubuntu-latest
+    needs: [lint-js, lint-python, test-js, build, test-python-unit, test-python-integration]
+    steps:
+      - run: echo "all checks passed"
