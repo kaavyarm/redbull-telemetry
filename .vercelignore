@@ -1,0 +1,12 @@
+.venv
+data
+node_modules
+tests
+analytics
+cleaning
+ingest
+observability
+scripts
+supabase
+docs
+*.parquet
