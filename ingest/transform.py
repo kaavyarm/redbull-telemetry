@@ -329,17 +329,70 @@ def _normalize_none_compound(laps: pd.DataFrame) -> pd.DataFrame:
     return laps
 
 
-def transform_session(data: SessionSourceData) -> TransformedSession:
-    laps_source = _normalize_none_compound(data.laps)
-    driver_map = driver_number_to_id_map(data.results)
+def _is_unresolved(driver_id_col: pd.Series) -> pd.Series:
+    return driver_id_col.astype(str).isin(["nan", ""])
+
+
+def _resolve_driver_ids(results: pd.DataFrame,
+                         driver_number_fallback: dict[str, tuple[str, str]] | None = None) -> pd.DataFrame:
+    """FastF1 leaves DriverId/TeamId unresolved in two different ways: the
+    literal string 'nan' (not a real null, so .dropna() misses it) for
+    individual entrants with no classified position, or a blank string for
+    every driver at once on session types Ergast doesn't support -- seen on
+    Sprint Qualifying ("Limited results are calculated from timing data").
+    TeamName/TeamColor/Abbreviation/FullName stay populated even then, so
+    in the whole-session case a driver's own already-known identity (from
+    another session, via driver_number_fallback) recovers real results
+    instead of losing the session entirely. Whatever's still unresolved
+    after that -- true one-off unclassified entrants, or an unraced driver
+    number with no prior session to borrow from -- gets dropped: every one
+    of these in a session would otherwise share the same blank id, which
+    collides on session_results' unique (session_id, driver_id) constraint,
+    and dropping them loses nothing meaningful since they have no
+    classified result either way. laps_source is filtered to match in
+    transform_session, so no downstream table (laps, stints,
+    setup_revisions, telemetry) is left trying to reference a driver that
+    was just excluded from `drivers`."""
+    if results.empty or "DriverId" not in results.columns:
+        return results
+    results = results.copy()
+    unresolved = _is_unresolved(results["DriverId"])
+    if driver_number_fallback and unresolved.any():
+        for idx in results.index[unresolved]:
+            fallback = driver_number_fallback.get(str(results.at[idx, "DriverNumber"]))
+            if fallback:
+                results.at[idx, "DriverId"], results.at[idx, "TeamId"] = fallback
+        unresolved = _is_unresolved(results["DriverId"])
+    return results[~unresolved].reset_index(drop=True)
+
+
+def _drop_unmapped(df: pd.DataFrame, driver_map: dict[str, str]) -> pd.DataFrame:
+    if df.empty or "DriverNumber" not in df.columns:
+        return df
+    return df[df["DriverNumber"].astype(str).isin(driver_map)].reset_index(drop=True)
+
+
+def transform_session(data: SessionSourceData,
+                       driver_number_fallback: dict[str, tuple[str, str]] | None = None) -> TransformedSession:
+    results = _resolve_driver_ids(data.results, driver_number_fallback)
+    driver_map = driver_number_to_id_map(results)
+    # Every driver_map-keyed table (laps, stints, setup_revisions, both
+    # telemetry tables) has a not-null driver_id FK into `drivers` --
+    # feeding any of them a DriverNumber that _drop_unresolved_drivers just
+    # excluded from `drivers` would crash the insert, so they all get the
+    # same filter applied to their source before the resolve step below.
+    laps_source = _drop_unmapped(_normalize_none_compound(data.laps), driver_map)
+    car_telemetry = _drop_unmapped(data.car_telemetry, driver_map)
+    position_telemetry = _drop_unmapped(data.position_telemetry, driver_map)
+
     laps_out = build_laps(laps_source, driver_map)
     setup_revisions, stints = build_setup_revisions_and_stints(laps_source)
 
     return TransformedSession(
         meta=data.meta,
-        teams=build_teams(data.results),
-        drivers=build_drivers(data.results),
-        session_results=build_session_results(data.results, driver_map),
+        teams=build_teams(results),
+        drivers=build_drivers(results),
+        session_results=build_session_results(results, driver_map),
         track_status_events=build_track_status_events(data.track_status),
         session_status_events=build_session_status_events(data.session_status),
         weather_samples=build_weather_samples(data.weather),
@@ -347,6 +400,6 @@ def transform_session(data: SessionSourceData) -> TransformedSession:
         setup_revisions=setup_revisions,
         stints=stints,
         laps=laps_out,
-        car_telemetry_samples=build_car_telemetry_samples(data.car_telemetry, driver_map, laps_out),
-        position_telemetry_samples=build_position_telemetry_samples(data.position_telemetry, driver_map, laps_out),
+        car_telemetry_samples=build_car_telemetry_samples(car_telemetry, driver_map, laps_out),
+        position_telemetry_samples=build_position_telemetry_samples(position_telemetry, driver_map, laps_out),
     )

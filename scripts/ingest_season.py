@@ -107,6 +107,9 @@ def main():
     parser.add_argument("--rounds", nargs="*", type=int, default=None, help="restrict to these round numbers")
     parser.add_argument("--rival-tier-size", type=int, default=DEFAULT_RIVAL_TIER_SIZE)
     parser.add_argument("--dry-run", action="store_true", help="enumerate + tier-plan only, no writes")
+    parser.add_argument("--skip-telemetry", action="store_true",
+                         help="write results/laps/stints only, no car/position telemetry -- for a cheap, "
+                              "broad season backfill on a small storage budget")
     args = parser.parse_args()
 
     sentry_active = init_sentry("ingest")
@@ -143,7 +146,17 @@ def main():
         # "read-only transaction" error in practice (most likely a pooler-
         # side connection reassignment), which crashed the whole run after
         # the round's real data had already committed successfully.
-        conn = get_connection()
+        try:
+            conn = get_connection()
+        except Exception:
+            # A transient network/DNS blip (seen in practice on a long
+            # unattended backfill) shouldn't kill every round still queued
+            # behind this one -- there's no connection to reconcile
+            # bookkeeping with anyway, so this round just stays pending for
+            # the next run to pick back up.
+            log.exception("round %d: could not open a database connection, skipping", round_number)
+            continue
+
         try:
             event = fastf1.get_event(args.year, round_number)
             pending = _pending_sessions(event, args.year, round_number, conn)
@@ -161,7 +174,7 @@ def main():
                 results = ingest_weekend(
                     args.year, round_number, session_ids=session_ids, conn=conn, owner_user_id=owner_user_id,
                     apply_tiering=True, rival_tier_size=args.rival_tier_size,
-                    session_load_delay_s=SESSION_LOAD_DELAY_S,
+                    session_load_delay_s=SESSION_LOAD_DELAY_S, skip_telemetry=args.skip_telemetry,
                 )
             except Exception:
                 # Some sessions in `pending` may have already committed

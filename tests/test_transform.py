@@ -11,7 +11,12 @@ import pandas as pd
 import pytest
 
 from ingest.sources import load_session_source_from_fixture
-from ingest.transform import transform_session
+from ingest.transform import (
+    _resolve_driver_ids,
+    build_session_results,
+    driver_number_to_id_map,
+    transform_session,
+)
 
 FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "2026"
 
@@ -74,6 +79,94 @@ def test_session_results_row_per_driver(hungary_quali):
     assert len(t.session_results) == len(source.results)
     # every driver_id resolved -- no unmapped DriverNumber
     assert t.session_results["driver_id"].notna().all()
+
+
+# Real-world case: FastF1 leaves DriverId/TeamId as the literal string
+# 'nan' (not an actual null) for entrants it can't resolve -- unclassified
+# drivers with no position who never ran. Seen on 2026 round 1, where three
+# such rows collided on session_results' unique (session_id, driver_id)
+# constraint since they all shared the id 'nan'.
+def _results_with_unresolved_entrants():
+    return pd.DataFrame({
+        "DriverNumber": ["1", "2", "3", "4"],
+        "DriverId": ["norris", "hadjar", "nan", "nan"],
+        "TeamId": ["mclaren", "red_bull", "nan", "nan"],
+        "TeamName": ["McLaren", "Red Bull", "nan", "nan"],
+        "TeamColor": ["FF8000", "3671C6", "nan", "nan"],
+        "FullName": ["Lando Norris", "Isack Hadjar", "Lance Stroll", "Max Verstappen"],
+        "Abbreviation": ["NOR", "HAD", "STR", "VER"],
+        "BroadcastName": ["L NORRIS", "I HADJAR", "L STROLL", "M VERSTAPPEN"],
+        "CountryCode": ["GBR", "FRA", "CAN", "NED"],
+        "HeadshotUrl": ["", "", "", ""],
+        "Position": [1.0, 2.0, float("nan"), float("nan")],
+        "ClassifiedPosition": ["1", "2", "", ""],
+        "GridPosition": [1.0, 2.0, float("nan"), float("nan")],
+        "Q1": [pd.NaT] * 4,
+        "Q2": [pd.NaT] * 4,
+        "Q3": [pd.NaT] * 4,
+        "Time": [pd.NaT] * 4,
+        "Status": ["", "", "", ""],
+        "Points": [25.0, 18.0, 0.0, 0.0],
+        "Laps": [58, 58, 0, 0],
+    })
+
+
+def test_resolve_driver_ids_drops_only_unresolved_rows_with_no_fallback():
+    filtered = _resolve_driver_ids(_results_with_unresolved_entrants())
+    assert list(filtered["DriverNumber"]) == ["1", "2"]
+
+
+def test_session_results_no_longer_collides_on_unresolved_driver_id():
+    results = _resolve_driver_ids(_results_with_unresolved_entrants())
+    driver_map = driver_number_to_id_map(results)
+    out = build_session_results(results, driver_map)
+    assert out["driver_id"].tolist() == ["norris", "hadjar"]
+    assert out["driver_id"].is_unique
+
+
+# Real-world case: Ergast (FastF1's results source) doesn't support Sprint
+# Qualifying at all -- "Limited results are calculated from timing data" --
+# so DriverId/TeamId come back blank for every driver in the session, not
+# just a one-off unresolved entrant. TeamName/TeamColor/Abbreviation/
+# FullName stay populated even then. Seen on 2026 round 2 (China).
+def _results_with_whole_session_unresolved():
+    return pd.DataFrame({
+        "DriverNumber": ["1", "2"],
+        "DriverId": ["", ""],
+        "TeamId": ["", ""],
+        "TeamName": ["McLaren", "Red Bull"],
+        "TeamColor": ["FF8000", "3671C6"],
+        "FullName": ["Lando Norris", "Isack Hadjar"],
+        "Abbreviation": ["NOR", "HAD"],
+        "BroadcastName": ["L NORRIS", "I HADJAR"],
+        "CountryCode": ["GBR", "FRA"],
+        "HeadshotUrl": ["", ""],
+        "Position": [float("nan"), float("nan")],
+        "ClassifiedPosition": ["", ""],
+        "GridPosition": [float("nan"), float("nan")],
+        "Q1": [pd.NaT, pd.NaT],
+        "Q2": [pd.NaT, pd.NaT],
+        "Q3": [pd.NaT, pd.NaT],
+        "Time": [pd.NaT, pd.NaT],
+        "Status": ["", ""],
+        "Points": [0.0, 0.0],
+        "Laps": [0, 0],
+    })
+
+
+def test_resolve_driver_ids_recovers_whole_session_via_fallback():
+    fallback = {"1": ("norris", "mclaren"), "2": ("hadjar", "red_bull")}
+    resolved = _resolve_driver_ids(_results_with_whole_session_unresolved(), fallback)
+    assert list(resolved["DriverId"]) == ["norris", "hadjar"]
+    assert list(resolved["TeamId"]) == ["mclaren", "red_bull"]
+    # TeamName/TeamColor were already correct in the source and untouched.
+    assert list(resolved["TeamName"]) == ["McLaren", "Red Bull"]
+
+
+def test_resolve_driver_ids_drops_rows_with_no_fallback_available():
+    fallback = {"1": ("norris", "mclaren")}  # driver "2" has no prior session to borrow from
+    resolved = _resolve_driver_ids(_results_with_whole_session_unresolved(), fallback)
+    assert list(resolved["DriverNumber"]) == ["1"]
 
 
 def test_laps_row_count_matches_source(hungary_quali):

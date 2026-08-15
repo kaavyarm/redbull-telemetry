@@ -46,6 +46,24 @@ def get_connection():
     return psycopg2.connect(dsn)
 
 
+def get_driver_number_fallback(conn) -> dict[str, tuple[str, str]]:
+    """driver_number -> (driver_id, team_id), from each driver's most
+    recently ingested resolved session_results row. A driver's number and
+    team identity are stable well beyond one session, so this backfills
+    sessions where FastF1 itself leaves DriverId/TeamId blank -- seen on
+    Sprint Qualifying, which Ergast doesn't support ("Limited results are
+    calculated from timing data"), unlike the ordinary occasional
+    unresolved-entrant case _drop_unresolved_drivers already handles."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            select distinct on (driver_number) driver_number, driver_id, team_id
+            from public.session_results
+            where driver_id is not null and driver_id != ''
+            order by driver_number, id desc
+        """)
+        return {str(number): (driver_id, team_id) for number, driver_id, team_id in cur.fetchall()}
+
+
 def _upsert_teams(cur, teams) -> None:
     if teams.empty:
         return
