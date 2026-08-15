@@ -6,8 +6,9 @@ import LapsTab from "./session-tabs/LapsTab";
 import TelemetryTab from "./session-tabs/TelemetryTab";
 import CompareTab from "./session-tabs/CompareTab";
 import SetupTab from "./session-tabs/SetupTab";
+import InsightsTab from "./session-tabs/InsightsTab";
 
-const TABS = ["Results", "Laps", "Telemetry", "Compare", "Setup"];
+const TABS = ["Results", "Laps", "Telemetry", "Compare", "Setup", "Insights"];
 
 function SessionDetailPage({ sessionId, onBack }) {
   const { status, data: session } = useAsync(() => getSession(sessionId), [sessionId]);
@@ -53,6 +54,7 @@ function SessionDetailPage({ sessionId, onBack }) {
       )}
       {tab === "Compare" && <CompareTab sessionId={sessionId} />}
       {tab === "Setup" && <SetupTab sessionId={sessionId} />}
+      {tab === "Insights" && <InsightsTab sessionId={sessionId} />}
     </section>
   );
 }

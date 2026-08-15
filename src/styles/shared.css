@@ -341,7 +341,8 @@ tbody tr.excluded-row td {
   box-shadow: 0 0 20px rgba(200, 145, 50, 0.08);
 }
 
-.severity-badge.low {
+.severity-badge.low,
+.severity-badge.info {
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);
   box-shadow: none;

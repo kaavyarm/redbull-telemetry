@@ -56,6 +56,16 @@ export function buildLapTelemetrySeries(rows) {
   }));
 }
 
+// Finds the row in a timeS-sorted series closest to a target time -- a
+// linear scan, fine at the point counts used here (a few hundred at most).
+// Shared by the lap-comparison resampler and the track map's cursor sync,
+// so both agree on what "closest sample to this hover time" means.
+export function nearestAt(series, targetTimeS) {
+  return series.reduce((closest, row) =>
+    Math.abs(row.timeS - targetTimeS) < Math.abs(closest.timeS - targetTimeS) ? row : closest
+  );
+}
+
 // Two laps rarely share a sample count, and reconstructing a shared
 // *distance* axis by integrating speed is numerically unreliable in
 // practice (see analytics/similarity.py) -- re-implementing that same
@@ -75,11 +85,6 @@ export function buildLapComparisonSeries(lapARows, lapBRows, points = 150) {
   );
   if (!Number.isFinite(maxTimeS) || maxTimeS <= 0) return [];
 
-  const nearestAt = (series, targetTimeS) =>
-    series.reduce((closest, row) =>
-      Math.abs(row.timeS - targetTimeS) < Math.abs(closest.timeS - targetTimeS) ? row : closest
-    );
-
   const step = maxTimeS / (points - 1);
   return Array.from({ length: points }, (_, index) => {
     const timeS = index * step;
@@ -91,8 +96,38 @@ export function buildLapComparisonSeries(lapARows, lapBRows, points = 150) {
       bSpeedKph: b.speedKph,
       aThrottlePct: a.throttlePct,
       bThrottlePct: b.throttlePct,
+      aBrakeOn: a.brakeOn,
+      bBrakeOn: b.brakeOn,
+      aNGear: a.nGear,
+      bNGear: b.nGear,
+      aRpm: a.rpm,
+      bRpm: b.rpm,
+      aDrs: a.drs,
+      bDrs: b.drs,
     };
   });
+}
+
+// One lap's position-telemetry rows -> chart-ready points on the same
+// "seconds since this lap's first sample" x-axis buildLapTelemetrySeries
+// uses, so a TrackMapPanel can look up the point nearest a given hover time
+// with the same nearestAt() a car-telemetry panel would use. car_telemetry
+// and position_telemetry are independently clocked (see
+// supabase/schema.sql), so this is its own t0, not shared with the other
+// series.
+export function buildLapPositionSeries(rows) {
+  if (!rows.length) return [];
+  const sorted = [...rows].sort(
+    (a, b) => parsePgInterval(a.session_time) - parsePgInterval(b.session_time)
+  );
+  const t0 = parsePgInterval(sorted[0].session_time);
+
+  return downsampleRows(sorted).map((row) => ({
+    timeS: parsePgInterval(row.session_time) - t0,
+    x: toChartNumber(row.x),
+    y: toChartNumber(row.y),
+    status: row.status,
+  }));
 }
 
 function seconds(pgInterval) {

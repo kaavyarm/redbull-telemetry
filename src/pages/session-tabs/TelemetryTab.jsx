@@ -1,16 +1,37 @@
-import { useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { getLapTelemetry } from "../../lib/api";
+import { useMemo, useState } from "react";
+import { getLapTelemetry, getLapPosition, getDerivedMetrics, getLapExclusions } from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
-import { buildLapTelemetrySeries } from "../../utils/telemetry";
+import { buildLapTelemetrySeries, buildLapPositionSeries } from "../../utils/telemetry";
+import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack";
+import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
 
 function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
   const { status, data: rows, error } = useAsync(
     () => (lapId ? getLapTelemetry(sessionId, lapId) : Promise.resolve([])),
     [sessionId, lapId]
   );
+  const { data: positionRows } = useAsync(
+    () => (lapId ? getLapPosition(sessionId, lapId) : Promise.resolve([])),
+    [sessionId, lapId]
+  );
+  const { data: optimalLap } = useAsync(
+    () => (lapId ? getDerivedMetrics(sessionId, "optimal_lap", driverId) : Promise.resolve([])),
+    [sessionId, lapId, driverId]
+  );
+  const { data: exclusions } = useAsync(
+    () => (lapId ? getLapExclusions(sessionId) : Promise.resolve([])),
+    [sessionId, lapId]
+  );
+
+  const [hoverTimeS, setHoverTimeS] = useState(null);
 
   const series = useMemo(() => buildLapTelemetrySeries(rows || []), [rows]);
+  const positionSeries = useMemo(() => buildLapPositionSeries(positionRows || []), [positionRows]);
+  const lapExclusion = useMemo(
+    () => (exclusions || []).find((e) => e.lap_id === lapId) ?? null,
+    [exclusions, lapId]
+  );
+  const timeLeftOnTable = optimalLap?.[0]?.value?.time_left_on_table_s;
 
   if (!lapId) {
     return (
@@ -30,35 +51,17 @@ function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
       <div className="chart-header">
         <div>
           <h3>{driverId} — Lap {lapNumber}</h3>
-          <span>{rows.length} samples, {series[series.length - 1].timeS.toFixed(1)}s</span>
+          <span>
+            {rows.length} samples, {series[series.length - 1].timeS.toFixed(1)}s
+            {timeLeftOnTable !== undefined && timeLeftOnTable !== null && ` · ${Number(timeLeftOnTable).toFixed(3)}s left on table`}
+            {lapExclusion && ` · excluded (${lapExclusion.category}: ${lapExclusion.reason})`}
+          </span>
         </div>
       </div>
 
-      <div className="chart-shell">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={series}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis dataKey="timeS" stroke="var(--muted)" fontSize={11} tickFormatter={(v) => v.toFixed(0)} />
-            <YAxis stroke="var(--muted)" fontSize={11} />
-            <Tooltip contentStyle={{ background: "#0a0b0d", border: "1px solid var(--border)" }} />
-            <Legend />
-            <Line type="monotone" dataKey="speedKph" name="Speed (km/h)" stroke="var(--blood-bright)" dot={false} strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="chart-shell" style={{ marginTop: 18 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={series}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis dataKey="timeS" stroke="var(--muted)" fontSize={11} tickFormatter={(v) => v.toFixed(0)} />
-            <YAxis stroke="var(--muted)" fontSize={11} domain={[0, 100]} />
-            <Tooltip contentStyle={{ background: "#0a0b0d", border: "1px solid var(--border)" }} />
-            <Legend />
-            <Line type="monotone" dataKey="throttlePct" name="Throttle %" stroke="var(--green)" dot={false} strokeWidth={2} />
-            <Line type="stepAfter" dataKey="brakeOn" name="Brake" stroke="var(--amber)" dot={false} strokeWidth={1.5} />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="telemetry-layout">
+        <TelemetryPanelStack series={series} syncId={`telemetry-${lapId}`} onHover={setHoverTimeS} />
+        <TrackMapPanel series={positionSeries} hoverTimeS={hoverTimeS} />
       </div>
     </div>
   );

@@ -1,0 +1,53 @@
+/* MoTeC-style stacked telemetry panels + track map (TelemetryTab, CompareTab) */
+
+.telemetry-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .telemetry-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* One heavy glass treatment on the outer wrapper (reuses .section-card),
+   not per-panel -- six blurred glass panels stacked would both look wrong
+   for a dense trace view and cost real compositing time. */
+.telemetry-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.telemetry-panel {
+  position: relative;
+  height: 100px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.telemetry-panel:last-child {
+  border-bottom: none;
+}
+
+.telemetry-panel-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 1;
+  color: var(--muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.track-map-shell {
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { getLaps, getLapTelemetry, getSessionResults } from "../../lib/api";
+import { getLaps, getLapTelemetry, getLapPosition, getSessionResults } from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
-import { buildLapComparisonSeries, computeLapDelta, parsePgInterval } from "../../utils/telemetry";
+import { buildLapComparisonSeries, buildLapPositionSeries, computeLapDelta, parsePgInterval } from "../../utils/telemetry";
 import { formatDelta } from "../../utils/format";
+import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack";
+import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
 
 function lapLabel(lap, driverName) {
   const time = lap.lap_time ? parsePgInterval(lap.lap_time).toFixed(3) + "s" : "no time";
@@ -43,10 +44,20 @@ function CompareTab({ sessionId }) {
     return { a, b };
   }, [sessionId, lapAId, lapBId]);
 
+  const { data: position } = useAsync(async () => {
+    if (!lapAId || !lapBId) return null;
+    const [a, b] = await Promise.all([getLapPosition(sessionId, lapAId), getLapPosition(sessionId, lapBId)]);
+    return { a, b };
+  }, [sessionId, lapAId, lapBId]);
+
+  const [hoverTimeS, setHoverTimeS] = useState(null);
+
   const comparisonSeries = useMemo(
     () => (telemetry ? buildLapComparisonSeries(telemetry.a, telemetry.b) : []),
     [telemetry]
   );
+  const positionSeriesA = useMemo(() => buildLapPositionSeries(position?.a || []), [position]);
+  const positionSeriesB = useMemo(() => buildLapPositionSeries(position?.b || []), [position]);
 
   const delta = lapA && lapB ? computeLapDelta(lapA, lapB) : null;
 
@@ -106,19 +117,22 @@ function CompareTab({ sessionId }) {
       </p>
 
       {telStatus === "loading" && <p>Loading telemetry…</p>}
+      {telStatus === "success" && comparisonSeries.length === 0 && (
+        <p style={{ color: "var(--muted)", fontSize: 13 }}>
+          No telemetry recorded for one or both of these laps — full car/position telemetry is only
+          kept for Red Bull's drivers and that session's closest rivals, so a lap outside that set
+          has lap times and sectors but no trace to plot here. Try a different pair of laps.
+        </p>
+      )}
       {telStatus === "success" && comparisonSeries.length > 0 && (
-        <div className="chart-shell">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={comparisonSeries}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="timeS" stroke="var(--muted)" fontSize={11} tickFormatter={(v) => v.toFixed(0)} />
-              <YAxis stroke="var(--muted)" fontSize={11} />
-              <Tooltip contentStyle={{ background: "#0a0b0d", border: "1px solid var(--border)" }} />
-              <Legend />
-              <Line type="monotone" dataKey="aSpeedKph" name="Lap A speed" stroke="var(--blood-bright)" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="bSpeedKph" name="Lap B speed" stroke="var(--amber)" dot={false} strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="telemetry-layout">
+          <TelemetryPanelStack
+            series={comparisonSeries}
+            syncId={`compare-${lapAId}-${lapBId}`}
+            compareMode
+            onHover={setHoverTimeS}
+          />
+          <TrackMapPanel series={positionSeriesA} seriesB={positionSeriesB} hoverTimeS={hoverTimeS} />
         </div>
       )}
     </div>

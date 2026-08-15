@@ -11,6 +11,19 @@ export function getConfidenceClass(confidence) {
   return String(confidence || "pending").toLowerCase();
 }
 
+// insight_findings.severity is 'info'|'low'|'medium'|'high' -- not
+// orderable in SQL the way its meaning implies (see lib/api.js's
+// getFindings), so callers sort with this rank client-side instead.
+const SEVERITY_RANK = { high: 3, medium: 2, low: 1, info: 0 };
+
+export function getSeverityClass(severity) {
+  return String(severity || "info").toLowerCase();
+}
+
+export function severityRank(severity) {
+  return SEVERITY_RANK[String(severity || "info").toLowerCase()] ?? 0;
+}
+
 export function formatDelta(value, unit = "", digits = 1) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return "N/A";

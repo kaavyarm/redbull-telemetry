@@ -10,6 +10,10 @@ SUPABASE_OWNER_USER_ID (the single dashboard user's auth.users.id) -- see
 .env.example. Safe to re-run: see ingest/db.py's docstring for the
 idempotency strategy.
 
+This is a thin wrapper around ingest.orchestration.ingest_weekend(), which
+also backs scripts/ingest_season.py -- all the FastF1/transform/write logic
+lives there, not here.
+
 Set SENTRY_DSN to report exceptions to Sentry; unset, this runs with
 structured logging only (see observability/).
 """
@@ -19,17 +23,10 @@ import os
 import sys
 from pathlib import Path
 
-import fastf1
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from ingest.db import get_connection, write_session  # noqa: E402
-from ingest.sources import load_session_source_from_fastf1  # noqa: E402
-from ingest.transform import transform_session  # noqa: E402
+from ingest.orchestration import ingest_weekend  # noqa: E402
 from observability.logging_config import get_logger, log_fields  # noqa: E402
 from observability.sentry import init_sentry  # noqa: E402
-from observability.timing import timed_block  # noqa: E402
-
-CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / ".fastf1_cache"
 
 log = get_logger("ingest_weekend")
 
@@ -49,44 +46,14 @@ def main():
     if not owner_user_id:
         sys.exit("SUPABASE_OWNER_USER_ID is not set -- see .env.example")
 
-    fastf1.Cache.enable_cache(str(CACHE_DIR))
-
-    event = fastf1.get_event(args.year, args.round)
-    session_ids = args.sessions
-    if session_ids is None:
-        session_ids = [str(i) for i in range(1, 6) if _has_session(event, i)]
-
-    conn = get_connection()
     try:
-        for sid in session_ids:
-            session = fastf1.get_session(args.year, args.round, sid)
-            session.load()
-            log_fields(log, logging.INFO, "transforming + writing session",
-                       event=event["EventName"], session=sid, session_name=session.name)
-            source = load_session_source_from_fastf1(session)
-            transformed = transform_session(source)
-
-            with timed_block(log, "wrote session", session=sid, laps=len(transformed.laps),
-                              car_telemetry=len(transformed.car_telemetry_samples),
-                              position_telemetry=len(transformed.position_telemetry_samples)):
-                db_session_id = write_session(conn, transformed, owner_user_id)
-
-            log_fields(log, logging.INFO, "session written", sessions_id=db_session_id)
+        results = ingest_weekend(args.year, args.round, session_ids=args.sessions, owner_user_id=owner_user_id)
     except Exception:
         log.exception("ingest_weekend failed")
         raise
-    finally:
-        conn.close()
 
-    log_fields(log, logging.INFO, "ingest_weekend done", year=args.year, round=args.round)
-
-
-def _has_session(event, i: int) -> bool:
-    try:
-        name = event.get_session_name(i)
-    except Exception:
-        return False
-    return bool(name) and not isinstance(name, float)
+    session_ids = {k: v["session_id"] for k, v in results.items()}
+    log_fields(log, logging.INFO, "ingest_weekend done", year=args.year, round=args.round, **session_ids)
 
 
 if __name__ == "__main__":

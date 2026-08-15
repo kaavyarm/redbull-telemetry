@@ -372,6 +372,54 @@ create table if not exists public.derived_metrics (
 create index if not exists derived_metrics_session_id_idx on public.derived_metrics(session_id);
 create index if not exists derived_metrics_session_type_idx on public.derived_metrics(session_id, metric_type);
 
+-- insight_findings is a separate table rather than another derived_metrics
+-- metric_type because findings need a typed severity and a structural way
+-- to reference a second driver/team being compared against -- derived_metrics'
+-- single free-form subject/value jsonb pair doesn't represent "this driver
+-- vs that driver" cleanly. The flat, typed shape here (finding_type,
+-- severity, subject/compared-against columns, a plain-language message) is
+-- deliberate: a future narration layer can read rows directly without a
+-- schema change.
+create table if not exists public.insight_findings (
+  id bigint generated always as identity primary key,
+  session_id bigint not null references public.sessions(id) on delete cascade,
+  finding_type text not null,        -- 'stint_degradation_vs_field' | 'sector_time_vs_teammate' | 'time_left_on_table'
+  severity text not null check (severity in ('info', 'low', 'medium', 'high')),
+  subject_driver_id text not null references public.drivers(id),
+  compared_against_type text not null check (
+    compared_against_type in ('teammate', 'team_avg', 'field_avg', 'session_optimal')
+  ),
+  compared_against_driver_id text references public.drivers(id),  -- set only for 'teammate'
+  compared_against_team_id text references public.teams(id),      -- set only for 'team_avg'
+  metric_value numeric,
+  threshold_value numeric,
+  unit text,                          -- 's' | 's_per_lap' | 'm' | 'pct'
+  subject jsonb not null default '{}'::jsonb,
+  message text not null,               -- plain-language rendering
+  computed_at timestamptz not null default now()
+);
+
+create index if not exists insight_findings_session_id_idx on public.insight_findings(session_id);
+create index if not exists insight_findings_session_driver_idx on public.insight_findings(session_id, subject_driver_id);
+
+-- ingestion_runs tracks which (season, round, session_type) pulls have
+-- already succeeded, so scripts/ingest_season.py can resume a long-running
+-- season backfill without re-fetching/re-transforming/re-writing sessions
+-- that already made it in. Pipeline-internal bookkeeping only, never read
+-- by the frontend -- deliberately NOT given RLS or a grant to
+-- `authenticated`, unlike every other table in this file.
+create table if not exists public.ingestion_runs (
+  id bigint generated always as identity primary key,
+  season integer not null,
+  round_number integer not null,
+  session_type text not null,
+  status text not null check (status in ('pending', 'running', 'done', 'failed')),
+  tier_summary jsonb,
+  attempted_at timestamptz not null default now(),
+  error text,
+  unique (season, round_number, session_type)
+);
+
 -- ============================================================
 -- OWNERSHIP PROTECTION
 -- ============================================================
@@ -417,6 +465,7 @@ alter table public.caution_periods enable row level security;
 alter table public.lap_exclusions enable row level security;
 alter table public.session_quality_flags enable row level security;
 alter table public.derived_metrics enable row level security;
+alter table public.insight_findings enable row level security;
 
 -- Reference tables (teams, drivers) aren't owned by any one session, so
 -- they're readable by any authenticated (i.e. the one signed-in) user
@@ -529,6 +578,13 @@ create policy "Owner can read their derived metrics"
     where s.id = derived_metrics.session_id and s.user_id = auth.uid()
   ));
 
+create policy "Owner can read their insight findings"
+  on public.insight_findings for select to authenticated
+  using (exists (
+    select 1 from public.sessions s
+    where s.id = insight_findings.session_id and s.user_id = auth.uid()
+  ));
+
 -- ============================================================
 -- GRANTS
 -- ============================================================
@@ -555,3 +611,4 @@ grant select on public.caution_periods to authenticated;
 grant select on public.lap_exclusions to authenticated;
 grant select on public.session_quality_flags to authenticated;
 grant select on public.derived_metrics to authenticated;
+grant select on public.insight_findings to authenticated;

@@ -133,7 +133,13 @@ def _bulk_insert(cur, table: str, df, session_id: int, columns: list[str],
     return []
 
 
-def write_session(conn, t: TransformedSession, owner_user_id: str) -> int:
+def write_session(conn, t: TransformedSession, owner_user_id: str, telemetry_driver_ids=None) -> int:
+    """telemetry_driver_ids, when given, restricts car/position telemetry
+    writes to that set of driver_ids -- everyone still gets laps/results/
+    stints/setup_revisions, just not the two high-volume telemetry tables.
+    None (the default) preserves the original unfiltered behavior exactly,
+    used by every single-weekend ingest_weekend.py call. See
+    ingest/tiering.py for how the set gets decided."""
     with conn:
         with conn.cursor() as cur:
             _upsert_teams(cur, t.teams)
@@ -254,6 +260,10 @@ def write_session(conn, t: TransformedSession, owner_user_id: str) -> int:
                 if df.empty:
                     continue
                 tel = df.copy()
+                if telemetry_driver_ids is not None:
+                    tel = tel[tel["driver_id"].isin(telemetry_driver_ids)]
+                    if tel.empty:
+                        continue
                 tel["lap_id"] = [
                     lap_ids.get((driver_id, lap_number)) if pd.notna(lap_number) else None
                     for driver_id, lap_number in zip(tel["driver_id"], tel["lap_number"], strict=True)

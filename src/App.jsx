@@ -9,6 +9,7 @@ import { Sentry } from "./lib/sentry";
 import "./styles/variables.css";
 import "./styles/layout.css";
 import "./styles/shared.css";
+import "./styles/telemetry.css";
 
 function App() {
   const [activePage, setActivePage] = useState("Overview");

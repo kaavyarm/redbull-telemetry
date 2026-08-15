@@ -125,6 +125,20 @@ export async function getLapTelemetry(sessionId, lapId) {
   );
 }
 
+// Position telemetry's own (session_id, lap_id) index covers this the same
+// way car_telemetry_samples' does -- same single-lap scoping as getLapTelemetry.
+export async function getLapPosition(sessionId, lapId) {
+  return runQuery(
+    "getLapPosition",
+    supabase
+      .from("position_telemetry_samples")
+      .select("session_time, x, y, z, status")
+      .eq("session_id", sessionId)
+      .eq("lap_id", lapId)
+      .order("session_time", { ascending: true })
+  );
+}
+
 export async function getLapExclusions(sessionId) {
   return runQuery(
     "getLapExclusions",
@@ -142,6 +156,22 @@ export async function getDerivedMetrics(sessionId, metricType, driverId = undefi
     query = driverId === null ? query.is("driver_id", null) : query.eq("driver_id", driverId);
   }
   return runQuery("getDerivedMetrics", query);
+}
+
+// severity is a text column ('info'|'low'|'medium'|'high'), so it isn't
+// orderable in SQL the way its meaning implies -- callers sort client-side
+// with utils/format.js's severityRank instead.
+export async function getFindings(sessionId, { severity, driverId } = {}) {
+  let query = supabase
+    .from("insight_findings")
+    .select(
+      "finding_type, severity, subject_driver_id, compared_against_type, compared_against_driver_id, compared_against_team_id, metric_value, threshold_value, unit, subject, message, computed_at, drivers!insight_findings_subject_driver_id_fkey(full_name, abbreviation)"
+    )
+    .eq("session_id", sessionId)
+    .order("computed_at", { ascending: false });
+  if (severity) query = query.eq("severity", severity);
+  if (driverId) query = query.eq("subject_driver_id", driverId);
+  return runQuery("getFindings", query);
 }
 
 // -- auth --

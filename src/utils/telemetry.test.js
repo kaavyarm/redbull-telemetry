@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLapComparisonSeries,
+  buildLapPositionSeries,
   buildLapTelemetrySeries,
   computeLapDelta,
   downsampleRows,
+  nearestAt,
   parsePgInterval,
   toChartNumber,
 } from "./telemetry";
@@ -131,6 +133,64 @@ describe("buildLapComparisonSeries", () => {
       expect(point.aSpeedKph).toBe(200);
       expect(point.bSpeedKph).toBe(180);
     }
+  });
+});
+
+describe("buildLapComparisonSeries", () => {
+  function makeRows(count, fn) {
+    return Array.from({ length: count }, (_, i) => ({
+      session_time: `00:00:${String(i).padStart(2, "0")}`,
+      speed: String(fn(i)),
+      throttle: "80",
+      brake: i % 2 === 0,
+      n_gear: 5,
+      rpm: "10000",
+      drs: 0,
+    }));
+  }
+
+  it("carries all six channels for both laps, not just speed", () => {
+    const a = makeRows(5, () => 200);
+    const b = makeRows(5, () => 180);
+    const series = buildLapComparisonSeries(a, b, 5);
+    for (const point of series) {
+      expect(point).toHaveProperty("aBrakeOn");
+      expect(point).toHaveProperty("bBrakeOn");
+      expect(point).toHaveProperty("aNGear");
+      expect(point).toHaveProperty("bNGear");
+      expect(point).toHaveProperty("aRpm");
+      expect(point).toHaveProperty("bRpm");
+      expect(point).toHaveProperty("aDrs");
+      expect(point).toHaveProperty("bDrs");
+    }
+  });
+});
+
+describe("nearestAt", () => {
+  it("finds the closest row by timeS", () => {
+    const series = [{ timeS: 0 }, { timeS: 1 }, { timeS: 2.5 }];
+    expect(nearestAt(series, 2.2)).toEqual({ timeS: 2.5 });
+  });
+
+  it("returns the only row for a single-row series", () => {
+    expect(nearestAt([{ timeS: 5 }], 100)).toEqual({ timeS: 5 });
+  });
+});
+
+describe("buildLapPositionSeries", () => {
+  it("zeroes the time axis and maps x/y/status", () => {
+    const rows = [
+      { session_time: "00:01:00", x: "10", y: "20", status: "OnTrack" },
+      { session_time: "00:01:00.5", x: "12", y: "22", status: "OnTrack" },
+    ];
+    expect(buildLapPositionSeries(rows)).toEqual([
+      { timeS: 0, x: 10, y: 20, status: "OnTrack" },
+      { timeS: 0.5, x: 12, y: 22, status: "OnTrack" },
+    ]);
+  });
+
+  it("returns an empty array for no rows", () => {
+    expect(buildLapPositionSeries([])).toEqual([]);
   });
 });
 
