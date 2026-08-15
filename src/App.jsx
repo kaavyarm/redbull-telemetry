@@ -5,6 +5,7 @@ import CommandPalette from "./components/CommandPalette";
 import ErrorFallback from "./components/ErrorFallback";
 import OverviewPage from "./pages/OverviewPage";
 import SessionsPage from "./pages/SessionsPage";
+import TrendsPage from "./pages/TrendsPage";
 import SessionDetailPage from "./pages/SessionDetailPage";
 import { Sentry } from "./lib/sentry";
 import "./styles/variables.css";
@@ -17,10 +18,15 @@ function App() {
   const [activePage, setActivePage] = useState("Overview");
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Only meaningful under the narrow-viewport breakpoint (CSS keeps the
+  // sidebar always visible above that width regardless of this flag) --
+  // off-canvas there, so navigating should close it back down.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   function goToPage(page) {
     setSelectedSessionId(null);
     setActivePage(page);
+    setSidebarOpen(false);
   }
 
   // The one place that sets both pieces of routing state together -- used
@@ -31,6 +37,7 @@ function App() {
     setActivePage("Sessions");
     setSelectedSessionId(sessionId);
     setPaletteOpen(false);
+    setSidebarOpen(false);
   }
 
   useEffect(() => {
@@ -50,6 +57,15 @@ function App() {
     <AuthGate>
       {(session) => (
         <div className="app">
+          <button
+            className="mobile-menu-toggle"
+            onClick={() => setSidebarOpen((open) => !open)}
+            aria-label="Toggle navigation"
+          >
+            ☰
+          </button>
+          {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+
           <Sidebar
             activePage={activePage}
             setActivePage={goToPage}
@@ -57,6 +73,7 @@ function App() {
             onSelectSession={goToSession}
             onOpenPalette={() => setPaletteOpen(true)}
             userEmail={session.user.email}
+            open={sidebarOpen}
           />
 
           <main className="main">
@@ -70,6 +87,7 @@ function App() {
               fallback={ErrorFallback}
             >
               {activePage === "Overview" && <OverviewPage />}
+              {activePage === "Trends" && <TrendsPage />}
               {activePage === "Sessions" && selectedSessionId === null && (
                 <SessionsPage onSelectSession={goToSession} />
               )}

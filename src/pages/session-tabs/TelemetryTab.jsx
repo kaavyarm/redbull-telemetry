@@ -73,7 +73,7 @@ function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
 
       <div className="telemetry-layout">
         <TelemetryPanelStack series={series} syncId={`telemetry-${lapId}`} onHover={setHoverTimeS} />
-        <TrackMapPanel series={positionSeries} hoverTimeS={hoverTimeS} />
+        <TrackMapPanel series={positionSeries} hoverTimeS={hoverTimeS} telemetrySeries={series} />
       </div>
     </div>
   );

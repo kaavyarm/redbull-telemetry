@@ -2,6 +2,21 @@ import { getSessionResults } from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
 import { formatMetric } from "../../utils/format";
 import { parsePgInterval } from "../../utils/telemetry";
+import ExportButton from "../../components/ExportButton";
+
+const RESULTS_CSV_COLUMNS = [
+  { key: "classified_position", label: "Position" },
+  { key: (r) => r.drivers?.full_name ?? r.driver_id, label: "Driver" },
+  { key: (r) => r.teams?.name ?? r.team_id, label: "Team" },
+  { key: "laps_completed", label: "Laps" },
+  { key: (r) => formatLapTimeForCsv(r), label: "Time / Gap" },
+  { key: "points", label: "Points" },
+  { key: "status", label: "Status" },
+];
+
+function formatLapTimeForCsv(r) {
+  return formatLapTime(r.q3 ?? r.q2 ?? r.q1 ?? r.finish_time);
+}
 
 function formatLapTime(interval) {
   const totalSeconds = parsePgInterval(interval);
@@ -20,6 +35,9 @@ function ResultsTab({ sessionId }) {
 
   return (
     <div className="section-card">
+      <div className="table-toolbar">
+        <ExportButton filename="results.csv" rows={results} columns={RESULTS_CSV_COLUMNS} />
+      </div>
       <table className="results-table">
         <thead>
           <tr>

@@ -80,10 +80,30 @@
 
 /* DATA TABLES (Results, Laps, Stints, Compound Summary) */
 
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.table-toolbar:empty {
+  display: none;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+.sparkline {
+  display: block;
+}
+
+.sparkline-empty {
+  color: var(--muted-2);
 }
 
 thead th {
@@ -401,6 +421,21 @@ tbody tr.excluded-row td {
   margin-bottom: var(--space-5);
 }
 
+.control-row.slider-row {
+  margin-top: var(--space-5);
+}
+
+.control-row.slider-row input[type="range"] {
+  width: 100%;
+}
+
+.strategy-note {
+  margin-top: var(--space-5);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: var(--line-body);
+}
+
 .laps-table {
   margin-top: var(--space-4);
 }
@@ -653,4 +688,29 @@ tbody tr.excluded-row td {
   background: rgba(200, 145, 50, 0.28);
   color: var(--amber);
   padding: 0 2px;
+}
+
+@media (max-width: 768px) {
+  .detail-grid,
+  .gauge-row,
+  .form-grid,
+  .record-layout {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .gauge-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Wide tables (Results, Laps, Stints) scroll horizontally instead of
+     squeezing columns or breaking the page layout -- CSS-only, so it
+     applies everywhere a <table> is used without touching every tab's JSX. */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }

@@ -131,7 +131,80 @@ def rule_time_left_on_table(context: dict) -> list[dict]:
     return findings
 
 
-RULES = [rule_stint_degradation_vs_field, rule_sector_time_vs_teammate, rule_time_left_on_table]
+def rule_braking_efficiency_vs_teammate(context: dict) -> list[dict]:
+    session_id = context["session_id"]
+    brake_pct = context["red_bull_brake_pct_by_driver"]  # driver_id -> % of fastest-lap time spent braking
+    rb_drivers = context["red_bull_driver_ids"]
+    if len(rb_drivers) != 2:
+        return []
+
+    driver_a, driver_b = sorted(rb_drivers)
+    pct_a, pct_b = brake_pct.get(driver_a), brake_pct.get(driver_b)
+    if pct_a is None or pct_b is None or pct_a <= 0 or pct_b <= 0:
+        return []
+
+    if pct_b >= pct_a:
+        subject, compared, higher_pct, lower_pct = driver_b, driver_a, pct_b, pct_a
+    else:
+        subject, compared, higher_pct, lower_pct = driver_a, driver_b, pct_a, pct_b
+    rel_diff = (higher_pct / lower_pct) - 1
+    if rel_diff <= 0.15:
+        return []
+    severity = "high" if rel_diff > 0.35 else "medium"
+    return [_finding(
+        session_id, "braking_efficiency_vs_teammate", severity, subject, "teammate",
+        f"{subject} spent {higher_pct:.1f}% of their fastest lap on the brakes, "
+        f"{rel_diff * 100:.0f}% more than teammate {compared} ({lower_pct:.1f}%).",
+        compared_against_driver_id=compared, metric_value=float(higher_pct), threshold_value=float(lower_pct),
+        unit="pct",
+    )]
+
+
+def rule_pace_consistency_vs_teammate(context: dict) -> list[dict]:
+    session_id = context["session_id"]
+    laps = context["red_bull_stint_laps"]  # driver_id, stint_number, lap_time_s -- clean laps only
+    rb_drivers = context["red_bull_driver_ids"]
+    if len(rb_drivers) != 2 or laps.empty:
+        return []
+
+    driver_a, driver_b = sorted(rb_drivers)
+    findings = []
+    for stint_number in sorted(laps["stint_number"].dropna().unique()):
+        stint_laps = laps[laps["stint_number"] == stint_number]
+        a_laps = stint_laps.loc[stint_laps["driver_id"] == driver_a, "lap_time_s"]
+        b_laps = stint_laps.loc[stint_laps["driver_id"] == driver_b, "lap_time_s"]
+        if len(a_laps) < 4 or len(b_laps) < 4:
+            continue  # too few laps for a standard deviation to mean anything
+
+        std_a, std_b = float(a_laps.std()), float(b_laps.std())
+        if std_a <= 0 or std_b <= 0:
+            continue
+        ratio = max(std_a, std_b) / min(std_a, std_b)
+        if ratio <= 1.5:
+            continue
+
+        if std_b > std_a:
+            less_consistent, more_consistent, less_std, more_std, lap_count = driver_b, driver_a, std_b, std_a, len(b_laps)
+        else:
+            less_consistent, more_consistent, less_std, more_std, lap_count = driver_a, driver_b, std_a, std_b, len(a_laps)
+        severity = "high" if ratio > 2.5 else "medium" if ratio > 1.8 else "low"
+        findings.append(_finding(
+            session_id, "pace_consistency_vs_teammate", severity, less_consistent, "teammate",
+            f"{less_consistent}'s lap time in stint {int(stint_number)} varies {ratio:.1f}x more than "
+            f"teammate {more_consistent}'s ({less_std:.3f}s vs {more_std:.3f}s std dev over {lap_count} laps).",
+            compared_against_driver_id=more_consistent, metric_value=less_std, threshold_value=more_std, unit="s",
+            subject={"stint_number": int(stint_number)},
+        ))
+    return findings
+
+
+RULES = [
+    rule_stint_degradation_vs_field,
+    rule_sector_time_vs_teammate,
+    rule_time_left_on_table,
+    rule_braking_efficiency_vs_teammate,
+    rule_pace_consistency_vs_teammate,
+]
 
 
 def evaluate_all_rules(context: dict) -> list[dict]:

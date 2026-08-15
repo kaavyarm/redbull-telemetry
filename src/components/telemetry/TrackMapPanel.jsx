@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { nearestAt } from "../../utils/telemetry";
+import { detectCorners, detectBrakingPoints } from "../../utils/trackGeometry";
 
 const PADDING = 20;
 const VIEW_SIZE = 400;
@@ -47,13 +48,26 @@ function buildPath(series) {
   return { points, toScreen };
 }
 
-// series: buildLapPositionSeries output for one (or two, in compareMode)
-// laps. hoverTimeS: lifted from TelemetryTab/CompareTab so the cursor
-// marker tracks the same scrub position as the synced channel panels above
-// it -- this component isn't a Recharts chart, so syncId can't reach it.
-function TrackMapPanel({ series, hoverTimeS, seriesB = null }) {
+// series/seriesB: buildLapPositionSeries output for one (or two, in
+// compareMode) laps. telemetrySeries/telemetrySeriesB: buildLapTelemetrySeries
+// output for the SAME laps -- optional, only used to derive braking-point
+// markers (already fetched by TelemetryTab/CompareTab for the channel
+// panels above this, so no new query here). hoverTimeS: lifted from the
+// parent so the cursor marker tracks the same scrub position as the synced
+// channel panels -- this component isn't a Recharts chart, so syncId can't
+// reach it.
+function TrackMapPanel({ series, hoverTimeS, seriesB = null, telemetrySeries = null, telemetrySeriesB = null }) {
   const path = useMemo(() => buildPath(series), [series]);
   const pathB = useMemo(() => (seriesB ? buildPath(seriesB) : null), [seriesB]);
+  const corners = useMemo(() => detectCorners(series), [series]);
+  const brakingPoints = useMemo(
+    () => (telemetrySeries ? detectBrakingPoints(telemetrySeries, series) : []),
+    [telemetrySeries, series]
+  );
+  const brakingPointsB = useMemo(
+    () => (telemetrySeriesB && seriesB ? detectBrakingPoints(telemetrySeriesB, seriesB) : []),
+    [telemetrySeriesB, seriesB]
+  );
 
   if (!path) {
     return (
@@ -85,6 +99,26 @@ function TrackMapPanel({ series, hoverTimeS, seriesB = null }) {
             strokeLinejoin="round"
           />
         )}
+
+        {corners.map((c) => {
+          const p = path.toScreen(c);
+          return (
+            <g key={c.number} className="track-corner-marker">
+              <circle cx={p.sx} cy={p.sy} r={7} />
+              <text x={p.sx} y={p.sy}>{c.number}</text>
+            </g>
+          );
+        })}
+
+        {brakingPoints.map((bp, i) => {
+          const p = path.toScreen(bp);
+          return <circle key={i} className="track-braking-marker" cx={p.sx} cy={p.sy} r={3} fill="var(--blood-bright)" />;
+        })}
+        {pathB && brakingPointsB.map((bp, i) => {
+          const p = pathB.toScreen(bp);
+          return <circle key={i} className="track-braking-marker" cx={p.sx} cy={p.sy} r={3} fill="var(--amber)" />;
+        })}
+
         {cursor && (
           <>
             <circle

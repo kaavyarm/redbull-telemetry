@@ -51,3 +51,23 @@
   align-items: center;
   justify-content: center;
 }
+
+.track-corner-marker circle {
+  fill: rgba(4, 5, 8, 0.85);
+  stroke: var(--cyan);
+  stroke-width: 1;
+}
+
+.track-corner-marker text {
+  fill: var(--cyan);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.track-braking-marker {
+  stroke: #fff;
+  stroke-width: 0.75;
+}

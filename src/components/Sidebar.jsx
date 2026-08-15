@@ -3,7 +3,7 @@ import { signOut, listSessions, getFindingsSeverityBySession } from "../lib/api"
 import { useAsync } from "../hooks/useAsync";
 import { sessionTypeLabel, severityRank } from "../utils/format";
 
-const NAV_PAGES = ["Overview", "Sessions"];
+const NAV_PAGES = ["Overview", "Sessions", "Trends"];
 
 function groupBySeasonAndWeekend(sessions) {
   const seasons = new Map();
@@ -37,7 +37,7 @@ function maxSeverityBySession(rows) {
   return map;
 }
 
-function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession, onOpenPalette, userEmail }) {
+function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession, onOpenPalette, userEmail, open = false }) {
   const { data: sessions } = useAsync(() => listSessions(), []);
   const { data: severityRows } = useAsync(() => getFindingsSeverityBySession(), []);
   const [expanded, setExpanded] = useState(() => new Set());
@@ -68,7 +68,7 @@ function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={open ? "sidebar open" : "sidebar"}>
       <div className="brand">
         <div className="brand-mark">RB</div>
         <div>

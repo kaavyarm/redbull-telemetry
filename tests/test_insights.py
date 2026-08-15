@@ -15,6 +15,8 @@ import pytest
 
 from insights.rules import (
     evaluate_all_rules,
+    rule_braking_efficiency_vs_teammate,
+    rule_pace_consistency_vs_teammate,
     rule_sector_time_vs_teammate,
     rule_stint_degradation_vs_field,
     rule_time_left_on_table,
@@ -137,6 +139,79 @@ def test_time_left_on_table_rule_silent_below_threshold():
     assert rule_time_left_on_table(context) == []
 
 
+# ---------------------------------------------------------------------------
+# rule_braking_efficiency_vs_teammate
+# ---------------------------------------------------------------------------
+
+def test_braking_efficiency_rule_fires_for_meaningful_gap():
+    context = {
+        "session_id": 1,
+        "red_bull_driver_ids": ["per", "ver"],
+        "red_bull_brake_pct_by_driver": {"ver": 12.0, "per": 18.0},  # per: 50% more
+    }
+    out = rule_braking_efficiency_vs_teammate(context)
+    assert len(out) == 1
+    assert out[0]["subject_driver_id"] == "per"
+    assert out[0]["compared_against_driver_id"] == "ver"
+    assert out[0]["severity"] == "high"
+
+
+def test_braking_efficiency_rule_silent_for_small_gap():
+    context = {
+        "session_id": 1,
+        "red_bull_driver_ids": ["per", "ver"],
+        "red_bull_brake_pct_by_driver": {"ver": 15.0, "per": 15.5},
+    }
+    assert rule_braking_efficiency_vs_teammate(context) == []
+
+
+def test_braking_efficiency_rule_needs_both_drivers():
+    context = {
+        "session_id": 1,
+        "red_bull_driver_ids": ["ver"],
+        "red_bull_brake_pct_by_driver": {"ver": 15.0},
+    }
+    assert rule_braking_efficiency_vs_teammate(context) == []
+
+
+# ---------------------------------------------------------------------------
+# rule_pace_consistency_vs_teammate
+# ---------------------------------------------------------------------------
+
+def _stint_laps(rows):
+    return pd.DataFrame(rows, columns=["driver_id", "stint_number", "lap_time_s"])
+
+
+def test_consistency_rule_fires_for_higher_variance():
+    rows = []
+    for t in [90.0, 90.1, 89.9, 90.0, 90.05]:
+        rows.append(("ver", 1, t))
+    for t in [90.0, 91.5, 88.7, 90.9, 89.3]:
+        rows.append(("per", 1, t))
+    context = {"session_id": 1, "red_bull_driver_ids": ["per", "ver"], "red_bull_stint_laps": _stint_laps(rows)}
+    out = rule_pace_consistency_vs_teammate(context)
+    assert len(out) == 1
+    assert out[0]["subject_driver_id"] == "per"
+    assert out[0]["compared_against_driver_id"] == "ver"
+    assert out[0]["subject"] == {"stint_number": 1}
+
+
+def test_consistency_rule_silent_for_similar_variance():
+    rows = []
+    for t in [90.0, 90.2, 89.8, 90.1, 89.9]:
+        rows.append(("ver", 1, t))
+    for t in [90.1, 90.3, 89.7, 90.0, 90.2]:
+        rows.append(("per", 1, t))
+    context = {"session_id": 1, "red_bull_driver_ids": ["per", "ver"], "red_bull_stint_laps": _stint_laps(rows)}
+    assert rule_pace_consistency_vs_teammate(context) == []
+
+
+def test_consistency_rule_needs_minimum_laps_per_stint():
+    rows = [("ver", 1, 90.0), ("ver", 1, 90.1), ("per", 1, 90.0), ("per", 1, 95.0)]
+    context = {"session_id": 1, "red_bull_driver_ids": ["per", "ver"], "red_bull_stint_laps": _stint_laps(rows)}
+    assert rule_pace_consistency_vs_teammate(context) == []
+
+
 def test_time_left_on_table_rule_missing_data_skipped():
     context = {"session_id": 1, "red_bull_driver_ids": ["ver"], "time_left_on_table_by_driver": {}}
     assert rule_time_left_on_table(context) == []
@@ -153,6 +228,8 @@ def test_evaluate_all_rules_aggregates_across_rules():
         "degradation_with_team": _degradation_rows([]),
         "red_bull_sector_laps": _sector_laps([]),
         "time_left_on_table_by_driver": {"ver": 0.9},
+        "red_bull_brake_pct_by_driver": {},
+        "red_bull_stint_laps": _stint_laps([]),
     }
     out = evaluate_all_rules(context)
     assert len(out) == 1

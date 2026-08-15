@@ -62,7 +62,7 @@ export async function getLaps(sessionId, driverId = null) {
   let query = supabase
     .from("laps")
     .select(
-      "id, driver_id, lap_number, lap_time, sector1_time, sector2_time, sector3_time, compound, deleted, is_accurate, pit_in_time, pit_out_time"
+      "id, driver_id, stint_id, lap_number, lap_time, sector1_time, sector2_time, sector3_time, compound, deleted, is_accurate, pit_in_time, pit_out_time"
     )
     .eq("session_id", sessionId)
     .order("lap_number", { ascending: true });

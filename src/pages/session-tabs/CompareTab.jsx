@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { getLaps, getLapTelemetry, getLapPosition, getSessionResults } from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
-import { buildLapComparisonSeries, buildLapPositionSeries, computeLapDelta, parsePgInterval } from "../../utils/telemetry";
+import {
+  buildLapComparisonSeries,
+  buildLapPositionSeries,
+  buildLapTelemetrySeries,
+  computeLapDelta,
+  parsePgInterval,
+} from "../../utils/telemetry";
 import { formatDelta } from "../../utils/format";
 import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack";
 import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
@@ -74,6 +80,8 @@ function CompareTab({ sessionId }) {
   );
   const positionSeriesA = useMemo(() => buildLapPositionSeries(position?.a || []), [position]);
   const positionSeriesB = useMemo(() => buildLapPositionSeries(position?.b || []), [position]);
+  const telemetrySeriesA = useMemo(() => buildLapTelemetrySeries(telemetry?.a || []), [telemetry]);
+  const telemetrySeriesB = useMemo(() => buildLapTelemetrySeries(telemetry?.b || []), [telemetry]);
 
   const delta = lapA && lapB ? computeLapDelta(lapA, lapB) : null;
 
@@ -136,7 +144,13 @@ function CompareTab({ sessionId }) {
             compareMode
             onHover={setHoverTimeS}
           />
-          <TrackMapPanel series={positionSeriesA} seriesB={positionSeriesB} hoverTimeS={hoverTimeS} />
+          <TrackMapPanel
+            series={positionSeriesA}
+            seriesB={positionSeriesB}
+            hoverTimeS={hoverTimeS}
+            telemetrySeries={telemetrySeriesA}
+            telemetrySeriesB={telemetrySeriesB}
+          />
         </div>
       )}
     </div>

@@ -533,3 +533,60 @@ h3 {
     width: 230px;
   }
 }
+
+/* MOBILE/TABLET: off-canvas sidebar behind a toggle button + backdrop.
+   Above this breakpoint .mobile-menu-toggle/.sidebar-backdrop are always
+   hidden and .sidebar's transform is reset, so `open` state is simply
+   inert on desktop rather than needing separate desktop/mobile markup. */
+
+.mobile-menu-toggle {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: var(--space-4);
+    left: var(--space-4);
+    z-index: 41;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    background: rgba(6, 7, 10, 0.85);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(1, 1, 2, 0.6);
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 270px;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    z-index: 40;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main {
+    padding: var(--space-16) var(--space-4) var(--space-4);
+  }
+}

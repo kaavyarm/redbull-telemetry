@@ -6,6 +6,7 @@ delete-then-insert idempotency) -- run this after
 scripts/compute_derived_metrics.py, since it reads derived_metrics rows as
 input rather than recomputing them.
 """
+import numpy as np
 import pandas as pd
 import psycopg2.extras
 
@@ -75,13 +76,74 @@ def _build_context(conn, session_id: int) -> dict:
             "sector3_time_s": laps["sector3_time"].apply(_seconds),
         })
 
+    stint_laps_rows = _read(conn, """
+        select l.driver_id, s.stint_number, l.lap_time
+        from public.laps l
+        join public.stints s on s.id = l.stint_id
+        where l.session_id = %s and l.driver_id = any(%s) and l.lap_time is not null
+          and l.id not in (select lap_id from public.lap_exclusions where session_id = %s)
+    """, (session_id, red_bull_driver_ids, session_id))
+    if stint_laps_rows.empty:
+        red_bull_stint_laps = pd.DataFrame(columns=["driver_id", "stint_number", "lap_time_s"])
+    else:
+        red_bull_stint_laps = pd.DataFrame({
+            "driver_id": stint_laps_rows["driver_id"],
+            "stint_number": stint_laps_rows["stint_number"],
+            "lap_time_s": stint_laps_rows["lap_time"].apply(_seconds),
+        })
+
+    red_bull_brake_pct_by_driver = _brake_pct_on_fastest_lap(conn, session_id, red_bull_driver_ids)
+
     return {
         "session_id": session_id,
         "red_bull_driver_ids": red_bull_driver_ids,
         "degradation_with_team": degradation_with_team,
         "time_left_on_table_by_driver": time_left_on_table_by_driver,
         "red_bull_sector_laps": red_bull_sector_laps,
+        "red_bull_stint_laps": red_bull_stint_laps,
+        "red_bull_brake_pct_by_driver": red_bull_brake_pct_by_driver,
     }
+
+
+def _brake_pct_on_fastest_lap(conn, session_id: int, driver_ids: list[str]) -> dict:
+    """Time-weighted (not sample-count-weighted -- telemetry sampling isn't
+    uniform, see docs/SCHEMA.md) share of each driver's fastest clean lap
+    spent with the brake channel on."""
+    if not driver_ids:
+        return {}
+
+    fastest = _read(conn, """
+        select l.driver_id, l.id as lap_id, l.lap_time
+        from public.laps l
+        where l.session_id = %s and l.driver_id = any(%s) and l.lap_time is not null
+          and l.id not in (select lap_id from public.lap_exclusions where session_id = %s)
+    """, (session_id, driver_ids, session_id))
+    if fastest.empty:
+        return {}
+    fastest_idx = fastest.groupby("driver_id")["lap_time"].idxmin()
+    fastest_lap_id_by_driver = dict(zip(fastest.loc[fastest_idx, "driver_id"], fastest.loc[fastest_idx, "lap_id"], strict=True))
+
+    lap_ids = list(fastest_lap_id_by_driver.values())
+    telemetry = _read(conn, """
+        select lap_id, session_time, brake from public.car_telemetry_samples
+        where session_id = %s and lap_id = any(%s)
+        order by lap_id, session_time
+    """, (session_id, lap_ids))
+
+    result = {}
+    for driver_id, lap_id in fastest_lap_id_by_driver.items():
+        lap_telemetry = telemetry[telemetry["lap_id"] == lap_id]
+        if len(lap_telemetry) < 2:
+            continue
+        t = lap_telemetry["session_time"].apply(_seconds).to_numpy()
+        brake = lap_telemetry["brake"].to_numpy()
+        dt = np.diff(t)  # gap until the next sample; each sample's brake state applies for that gap
+        total_time = dt.sum()
+        if total_time <= 0:
+            continue
+        brake_time = dt[brake[:-1]].sum()
+        result[driver_id] = float(100 * brake_time / total_time)
+    return result
 
 
 def build_insight_findings(conn, session_id: int) -> list[dict]:

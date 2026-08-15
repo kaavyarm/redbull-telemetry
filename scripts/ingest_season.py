@@ -120,18 +120,35 @@ def main():
     round_numbers = _elapsed_rounds(args.year, args.rounds)
     log_fields(log, logging.INFO, "elapsed rounds", year=args.year, rounds=round_numbers)
 
-    conn = get_connection()
-    try:
-        for round_number in round_numbers:
+    if args.dry_run:
+        conn = get_connection()
+        try:
+            for round_number in round_numbers:
+                event = fastf1.get_event(args.year, round_number)
+                pending = _pending_sessions(event, args.year, round_number, conn)
+                if not pending:
+                    log_fields(log, logging.INFO, "round already fully ingested, skipping", round=round_number)
+                    continue
+                log_fields(log, logging.INFO, "dry-run: would ingest", round=round_number,
+                           sessions=[st for _, st in pending])
+        finally:
+            conn.close()
+        log_fields(log, logging.INFO, "ingest_season done", year=args.year)
+        return
+
+    for round_number in round_numbers:
+        # A fresh connection per round, not one held open across the whole
+        # backfill -- a multi-minute telemetry write followed by a much
+        # later bookkeeping write on the same long-lived connection hit a
+        # "read-only transaction" error in practice (most likely a pooler-
+        # side connection reassignment), which crashed the whole run after
+        # the round's real data had already committed successfully.
+        conn = get_connection()
+        try:
             event = fastf1.get_event(args.year, round_number)
             pending = _pending_sessions(event, args.year, round_number, conn)
             if not pending:
                 log_fields(log, logging.INFO, "round already fully ingested, skipping", round=round_number)
-                continue
-
-            if args.dry_run:
-                log_fields(log, logging.INFO, "dry-run: would ingest", round=round_number,
-                           sessions=[st for _, st in pending])
                 continue
 
             session_ids = [sid for sid, _ in pending]
@@ -146,12 +163,14 @@ def main():
                     apply_tiering=True, rival_tier_size=args.rival_tier_size,
                     session_load_delay_s=SESSION_LOAD_DELAY_S,
                 )
-            except Exception as exc:
-                with conn.cursor() as cur:
-                    for _, session_type in pending:
-                        _record_status(cur, args.year, round_number, session_type, "failed", error=str(exc))
-                conn.commit()
-                log.exception("round %d failed, will retry on next run", round_number)
+            except Exception:
+                # Some sessions in `pending` may have already committed
+                # (write_session commits per-session) before the exception --
+                # only the ones NOT actually in `sessions` yet are real
+                # failures; marking everything "failed" would make an
+                # already-successful session look like it needs retrying.
+                log.exception("round %d failed partway through", round_number)
+                _reconcile_partial_round(conn, args.year, round_number, pending)
                 continue
 
             with conn.cursor() as cur:
@@ -160,10 +179,32 @@ def main():
                                     tier_summary={"telemetry_driver_count": info["telemetry_driver_count"]})
             conn.commit()
             log_fields(log, logging.INFO, "round ingested", round=round_number, sessions=list(results.keys()))
-    finally:
-        conn.close()
+        except Exception:
+            # Bookkeeping-write failures (e.g. the read-only-transaction
+            # case above) shouldn't take down the rest of the backfill --
+            # the round's real data is already committed either way.
+            log.exception("round %d bookkeeping failed, continuing to next round", round_number)
+        finally:
+            conn.close()
 
     log_fields(log, logging.INFO, "ingest_season done", year=args.year)
+
+
+def _reconcile_partial_round(conn, year: int, round_number: int, pending: list[tuple[str, str]]) -> None:
+    """After a mid-round exception, check which of the pending sessions
+    actually made it into `sessions` (write_session commits per-session, so
+    some may have) and record status accordingly instead of blanket-marking
+    the whole round as failed."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "select session_type from public.sessions where season = %s and round_number = %s",
+            (year, round_number),
+        )
+        written = {row[0] for row in cur.fetchall()}
+        for _, session_type in pending:
+            status = "done" if session_type in written else "failed"
+            _record_status(cur, year, round_number, session_type, status)
+    conn.commit()
 
 
 if __name__ == "__main__":

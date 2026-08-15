@@ -5,12 +5,26 @@ import {
   getSetupRevisionDeltas,
   getDerivedMetrics,
   getSessionResults,
+  getLaps,
 } from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
 import { parsePgInterval } from "../../utils/telemetry";
 import { formatDelta } from "../../utils/format";
 import ConfidenceBadge from "../../components/ConfidenceBadge";
 import RadialGauge from "../../components/hud/RadialGauge";
+import Sparkline from "../../components/hud/Sparkline";
+import ExportButton from "../../components/ExportButton";
+
+const STINTS_CSV_COLUMNS = [
+  { key: (s) => s.drivers?.full_name ?? s.driver_id, label: "Driver" },
+  { key: "stint_number", label: "Stint" },
+  { key: "compound", label: "Compound" },
+  { key: "lap_count", label: "Laps" },
+  { key: "clean_lap_count", label: "Clean laps" },
+  { key: (s) => seconds(s.avg_clean_lap_time), label: "Avg pace" },
+  { key: (s) => seconds(s.fastest_clean_lap_time), label: "Fastest" },
+  { key: (s) => (s.degradation_seconds_per_lap !== null ? Number(s.degradation_seconds_per_lap).toFixed(3) : ""), label: "Degradation (s/lap)" },
+];
 
 const RED_BULL_TEAM_ID = "red_bull";
 
@@ -52,6 +66,29 @@ function SetupTab({ sessionId }) {
     [sessionId]
   );
   const { data: results } = useAsync(() => getSessionResults(sessionId), [sessionId]);
+  const { data: allLaps } = useAsync(() => getLaps(sessionId), [sessionId]);
+
+  // stint_performance doesn't expose the stint's own id, but it does carry
+  // lap_start/lap_end -- filtering getLaps by that lap-number range per
+  // driver reconstructs the same grouping without needing a join key.
+  const lapTimesByStint = useMemo(() => {
+    const map = new Map();
+    for (const s of stints || []) {
+      const stintLaps = (allLaps || [])
+        .filter(
+          (l) =>
+            l.driver_id === s.driver_id &&
+            l.lap_number >= s.lap_start &&
+            (s.lap_end === null || l.lap_number <= s.lap_end) &&
+            l.lap_time !== null &&
+            !l.deleted
+        )
+        .sort((a, b) => a.lap_number - b.lap_number)
+        .map((l) => parsePgInterval(l.lap_time));
+      map.set(`${s.driver_id}-${s.stint_number}`, stintLaps);
+    }
+    return map;
+  }, [stints, allLaps]);
 
   const confidenceByStint = useMemo(() => {
     const map = new Map();
@@ -145,7 +182,10 @@ function SetupTab({ sessionId }) {
       </div>
 
       <div className="section-card">
-        <h3>Stints</h3>
+        <div className="table-toolbar">
+          <h3>Stints</h3>
+          <ExportButton filename="stints.csv" rows={stints} columns={STINTS_CSV_COLUMNS} />
+        </div>
         <table>
           <thead>
             <tr>
@@ -156,6 +196,7 @@ function SetupTab({ sessionId }) {
               <th>Clean laps</th>
               <th>Avg pace</th>
               <th>Fastest</th>
+              <th>Trend</th>
               <th>Degradation (s/lap)</th>
               <th>Confidence</th>
             </tr>
@@ -172,6 +213,7 @@ function SetupTab({ sessionId }) {
                   <td>{s.clean_lap_count}</td>
                   <td>{seconds(s.avg_clean_lap_time)}</td>
                   <td>{seconds(s.fastest_clean_lap_time)}</td>
+                  <td><Sparkline values={lapTimesByStint.get(`${s.driver_id}-${s.stint_number}`)} /></td>
                   <td>{s.degradation_seconds_per_lap !== null ? Number(s.degradation_seconds_per_lap).toFixed(3) : "—"}</td>
                   <td>{confidence ? <ConfidenceBadge confidence={confidence}>{confidence}</ConfidenceBadge> : "—"}</td>
                 </tr>

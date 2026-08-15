@@ -3,6 +3,15 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { getLapTimeEvolution, getSessionResults } from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
 import { parsePgInterval } from "../../utils/telemetry";
+import ExportButton from "../../components/ExportButton";
+
+const LAPS_CSV_COLUMNS = [
+  { key: "lap_number", label: "Lap" },
+  { key: (l) => (l.lap_time ? parsePgInterval(l.lap_time).toFixed(3) : ""), label: "Time" },
+  { key: (l) => (l.delta_to_prev_lap ? parsePgInterval(l.delta_to_prev_lap).toFixed(3) : ""), label: "Delta prev" },
+  { key: "rank_in_lap", label: "Rank" },
+  { key: (l) => (l.is_excluded ? (l.exclusion_categories || []).join("; ") : "clean"), label: "Status" },
+];
 
 function LapsTab({ sessionId, onViewTelemetry }) {
   const { status: resultsStatus, data: results } = useAsync(() => getSessionResults(sessionId), [sessionId]);
@@ -64,6 +73,9 @@ function LapsTab({ sessionId, onViewTelemetry }) {
             </ResponsiveContainer>
           </div>
 
+          <div className="table-toolbar">
+            <ExportButton filename={`laps-${effectiveDriverId}.csv`} rows={laps} columns={LAPS_CSV_COLUMNS} />
+          </div>
           <table className="laps-table">
             <thead>
               <tr>
