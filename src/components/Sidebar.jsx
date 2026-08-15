@@ -13,6 +13,13 @@ function Sidebar({ activePage, setActivePage, userEmail }) {
         </div>
       </div>
 
+      {/* Reflects a real state (AuthGate only renders this component once a
+          Supabase auth session exists) -- not a decorative claim. */}
+      <div className="system-status">
+        <span className="system-status-dot pulse-glow" />
+        <span>Session active</span>
+      </div>
+
       <nav className="nav">
         {NAV_PAGES.map((page) => (
           <button

@@ -37,7 +37,11 @@ function InsightsTab({ sessionId }) {
   return (
     <div className="section-card">
       {sorted.map((f, index) => (
-        <div key={index} className={index > 0 ? "finding-card-footer" : ""}>
+        <div
+          key={index}
+          className={`reveal${index > 0 ? " finding-card-footer" : ""}${f.severity === "high" ? " scan-once" : ""}`}
+          style={{ "--i": index }}
+        >
           <div className="finding-card-header">
             <div>
               <strong>{driverLabel(f.subject_driver_id, f.drivers)}</strong>

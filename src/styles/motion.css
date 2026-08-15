@@ -1,0 +1,61 @@
+/* Ambient + reveal motion layer. Nothing in this codebase used @keyframes
+   or transition before this file -- every rule here is deliberately
+   subtle (short duration, low-amplitude glow) so it reads as "live system"
+   rather than a flashy loading sequence. */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes scan-once {
+  from {
+    box-shadow: 0 0 0 1px var(--cyan-glow), 0 0 28px var(--cyan-glow);
+  }
+  to {
+    box-shadow: 0 0 0 1px transparent, 0 0 0 transparent;
+  }
+}
+
+/* Stagger a list by setting style={{ '--i': index }} on each item -- no
+   per-component JS stagger logic needed. */
+.reveal {
+  animation: reveal-up 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.scan-once {
+  border-radius: 8px;
+  animation: scan-once 1200ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 70ms + 200ms);
+}
+
+.pulse-glow {
+  animation: pulse-glow 2400ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .scan-once,
+  .pulse-glow {
+    animation: none !important;
+  }
+}

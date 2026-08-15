@@ -1,13 +1,33 @@
 import { useMemo } from "react";
-import { getCompoundPaceSummary, getStintPerformance, getSetupRevisionDeltas, getDerivedMetrics } from "../../lib/api";
+import {
+  getCompoundPaceSummary,
+  getStintPerformance,
+  getSetupRevisionDeltas,
+  getDerivedMetrics,
+  getSessionResults,
+} from "../../lib/api";
 import { useAsync } from "../../hooks/useAsync";
 import { parsePgInterval } from "../../utils/telemetry";
 import { formatDelta } from "../../utils/format";
 import ConfidenceBadge from "../../components/ConfidenceBadge";
+import RadialGauge from "../../components/hud/RadialGauge";
+
+const RED_BULL_TEAM_ID = "red_bull";
 
 function seconds(interval, digits = 3) {
   const s = parsePgInterval(interval);
   return s === null ? "—" : s.toFixed(digits);
+}
+
+// Client-side mirror of insights/aggregation.py::compute_field_average_degradation
+// -- a summary widget, not a new backend query, so it stays cheap and stays
+// in sync with whatever's already been fetched for the Stints table below.
+function averageDegradation(stints, driverIds) {
+  const values = stints
+    .filter((s) => driverIds.has(s.driver_id) && s.degradation_seconds_per_lap !== null)
+    .map((s) => Number(s.degradation_seconds_per_lap));
+  if (!values.length) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
 // stint_performance's degradation_seconds_per_lap comes straight from
@@ -31,6 +51,7 @@ function SetupTab({ sessionId }) {
     () => getDerivedMetrics(sessionId, "stint_degradation"),
     [sessionId]
   );
+  const { data: results } = useAsync(() => getSessionResults(sessionId), [sessionId]);
 
   const confidenceByStint = useMemo(() => {
     const map = new Map();
@@ -40,12 +61,57 @@ function SetupTab({ sessionId }) {
     return map;
   }, [degradationMetrics]);
 
+  const degradationSummary = useMemo(() => {
+    if (!stints?.length || !results?.length) return null;
+    const redBullIds = new Set(results.filter((r) => r.team_id === RED_BULL_TEAM_ID).map((r) => r.driver_id));
+    if (!redBullIds.size) return null;
+    const fieldIds = new Set(results.filter((r) => !redBullIds.has(r.driver_id)).map((r) => r.driver_id));
+    const redBullAvg = averageDegradation(stints, redBullIds);
+    const fieldAvg = averageDegradation(stints, fieldIds);
+    if (redBullAvg === null && fieldAvg === null) return null;
+    // Degradation is often negative (pace improving through a stint as fuel
+    // burns off faster than tires wear) -- a [0, max] domain would render a
+    // negative value as a fully empty gauge regardless of magnitude, so the
+    // domain spans whichever of the two values is most negative/most
+    // positive instead, with headroom on both ends.
+    const values = [redBullAvg, fieldAvg].filter((v) => v !== null);
+    const domainMin = Math.min(0, ...values) * 1.3 || -0.1;
+    const domainMax = Math.max(0, ...values) * 1.3 || 0.1;
+    return { redBullAvg, fieldAvg, domainMin, domainMax };
+  }, [stints, results]);
+
   if (stintStatus === "loading") return <div className="section-card"><h3>Loading…</h3></div>;
   if (stintStatus === "error") return <div className="section-card"><h3>Couldn't load setup data</h3><p>{stintError.message}</p></div>;
 
   return (
     <>
-      <div className="section-card">
+      {degradationSummary && (
+        <div className="section-card">
+          <h3>Degradation vs. field</h3>
+          <div className="gauge-row">
+            <RadialGauge
+              value={degradationSummary.redBullAvg}
+              min={degradationSummary.domainMin}
+              max={degradationSummary.domainMax}
+              unit=" s/lap"
+              label="Red Bull avg"
+              tone="blood"
+              formatValue={(v) => v.toFixed(3)}
+            />
+            <RadialGauge
+              value={degradationSummary.fieldAvg}
+              min={degradationSummary.domainMin}
+              max={degradationSummary.domainMax}
+              unit=" s/lap"
+              label="Field avg"
+              tone="cyan"
+              formatValue={(v) => v.toFixed(3)}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="section-card" style={{ marginTop: degradationSummary ? 18 : 0 }}>
         <h3>Compound pace summary</h3>
         {compoundStatus === "success" && compounds.length === 0 && (
           <p>No compound had enough clean laps (3+) for a trustworthy average this session.</p>

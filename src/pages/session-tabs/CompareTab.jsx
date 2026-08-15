@@ -5,10 +5,26 @@ import { buildLapComparisonSeries, buildLapPositionSeries, computeLapDelta, pars
 import { formatDelta } from "../../utils/format";
 import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack";
 import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
+import AnimatedNumber from "../../components/hud/AnimatedNumber";
 
 function lapLabel(lap, driverName) {
   const time = lap.lap_time ? parsePgInterval(lap.lap_time).toFixed(3) + "s" : "no time";
   return `${driverName} — Lap ${lap.lap_number} (${time})`;
+}
+
+// Positive delta = lap B slower than lap A (same convention as
+// computeLapDelta/analytics/similarity.py) -- colored the way a real
+// timing screen would: green when B gained time, red when B lost it.
+function DeltaBlock({ label, value }) {
+  const direction = value === null || value === undefined ? "" : value < 0 ? "faster" : value > 0 ? "slower" : "";
+  return (
+    <div className={`info-block${direction ? ` ${direction}` : ""}`}>
+      <p>{label}</p>
+      <strong>
+        <AnimatedNumber value={value} format={(v) => formatDelta(v, "s", 3)} />
+      </strong>
+    </div>
+  );
 }
 
 function CompareTab({ sessionId }) {
@@ -91,22 +107,10 @@ function CompareTab({ sessionId }) {
 
       {delta && (
         <div className="detail-grid">
-          <div className="info-block">
-            <p>Lap time Δ</p>
-            <strong>{formatDelta(delta.lapTimeDeltaS, "s", 3)}</strong>
-          </div>
-          <div className="info-block">
-            <p>Sector 1 Δ</p>
-            <strong>{formatDelta(delta.sector1DeltaS, "s", 3)}</strong>
-          </div>
-          <div className="info-block">
-            <p>Sector 2 Δ</p>
-            <strong>{formatDelta(delta.sector2DeltaS, "s", 3)}</strong>
-          </div>
-          <div className="info-block">
-            <p>Sector 3 Δ</p>
-            <strong>{formatDelta(delta.sector3DeltaS, "s", 3)}</strong>
-          </div>
+          <DeltaBlock label="Lap time Δ" value={delta.lapTimeDeltaS} />
+          <DeltaBlock label="Sector 1 Δ" value={delta.sector1DeltaS} />
+          <DeltaBlock label="Sector 2 Δ" value={delta.sector2DeltaS} />
+          <DeltaBlock label="Sector 3 Δ" value={delta.sector3DeltaS} />
         </div>
       )}
 

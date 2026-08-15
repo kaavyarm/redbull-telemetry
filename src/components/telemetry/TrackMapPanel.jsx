@@ -85,8 +85,34 @@ function TrackMapPanel({ series, hoverTimeS, seriesB = null }) {
             strokeLinejoin="round"
           />
         )}
-        {cursor && <circle cx={cursor.sx} cy={cursor.sy} r={5} fill="var(--blood-bright)" stroke="#fff" strokeWidth={1.5} />}
-        {cursorB && <circle cx={cursorB.sx} cy={cursorB.sy} r={5} fill="var(--amber)" stroke="#fff" strokeWidth={1.5} />}
+        {cursor && (
+          <>
+            <circle
+              className="pulse-glow"
+              cx={cursor.sx}
+              cy={cursor.sy}
+              r={10}
+              fill="var(--blood-bright)"
+              opacity={0.35}
+              style={{ transformBox: "fill-box", transformOrigin: "center" }}
+            />
+            <circle cx={cursor.sx} cy={cursor.sy} r={5} fill="var(--blood-bright)" stroke="#fff" strokeWidth={1.5} />
+          </>
+        )}
+        {cursorB && (
+          <>
+            <circle
+              className="pulse-glow"
+              cx={cursorB.sx}
+              cy={cursorB.sy}
+              r={10}
+              fill="var(--amber)"
+              opacity={0.35}
+              style={{ transformBox: "fill-box", transformOrigin: "center" }}
+            />
+            <circle cx={cursorB.sx} cy={cursorB.sy} r={5} fill="var(--amber)" stroke="#fff" strokeWidth={1.5} />
+          </>
+        )}
       </svg>
     </div>
   );

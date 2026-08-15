@@ -4,6 +4,7 @@ import { useAsync } from "../../hooks/useAsync";
 import { buildLapTelemetrySeries, buildLapPositionSeries } from "../../utils/telemetry";
 import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack";
 import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
+import RadialGauge from "../../components/hud/RadialGauge";
 
 function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
   const { status, data: rows, error } = useAsync(
@@ -53,10 +54,21 @@ function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
           <h3>{driverId} — Lap {lapNumber}</h3>
           <span>
             {rows.length} samples, {series[series.length - 1].timeS.toFixed(1)}s
-            {timeLeftOnTable !== undefined && timeLeftOnTable !== null && ` · ${Number(timeLeftOnTable).toFixed(3)}s left on table`}
             {lapExclusion && ` · excluded (${lapExclusion.category}: ${lapExclusion.reason})`}
           </span>
         </div>
+        {timeLeftOnTable !== undefined && timeLeftOnTable !== null && (
+          <RadialGauge
+            value={Number(timeLeftOnTable)}
+            min={0}
+            max={2}
+            unit="s"
+            label="Left on table"
+            tone="cyan"
+            size={92}
+            formatValue={(v) => v.toFixed(3)}
+          />
+        )}
       </div>
 
       <div className="telemetry-layout">

@@ -49,14 +49,22 @@ function OverviewPage() {
       {status === "success" && sessions.length > 0 && (
         <>
           <div className="detail-grid">
-            <StatusCard label="Weekends ingested" value={summarize(sessions).weekendCount} detail="race weekends" />
-            <StatusCard label="Sessions ingested" value={summarize(sessions).sessionCount} detail="practice, qualifying, race" />
-            <StatusCard label="Race sessions" value={summarize(sessions).raceCount} detail="full races" />
-            <StatusCard
-              label="Most recent"
-              value={summarize(sessions).latest.event_name}
-              detail={summarize(sessions).latest.session_name}
-            />
+            <div className="reveal" style={{ "--i": 0 }}>
+              <StatusCard label="Weekends ingested" value={summarize(sessions).weekendCount} detail="race weekends" />
+            </div>
+            <div className="reveal" style={{ "--i": 1 }}>
+              <StatusCard label="Sessions ingested" value={summarize(sessions).sessionCount} detail="practice, qualifying, race" />
+            </div>
+            <div className="reveal" style={{ "--i": 2 }}>
+              <StatusCard label="Race sessions" value={summarize(sessions).raceCount} detail="full races" />
+            </div>
+            <div className="reveal" style={{ "--i": 3 }}>
+              <StatusCard
+                label="Most recent"
+                value={summarize(sessions).latest.event_name}
+                detail={summarize(sessions).latest.session_name}
+              />
+            </div>
           </div>
           <div className="section-card">
             <h3>Ingested weekends</h3>
