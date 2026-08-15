@@ -174,6 +174,17 @@ export async function getFindings(sessionId, { severity, driverId } = {}) {
   return runQuery("getFindings", query);
 }
 
+// Unscoped (every session the RLS-authenticated owner can see, not just
+// one) -- the nav tree needs a lightweight signal for "which sessions have
+// findings worth flagging," not any one session's full finding detail, so
+// this stays a separate query rather than a getFindings(sessionId=null) mode.
+export async function getFindingsSeverityBySession() {
+  return runQuery(
+    "getFindingsSeverityBySession",
+    supabase.from("insight_findings").select("session_id, severity")
+  );
+}
+
 // -- auth --
 
 export async function signInWithPassword(email, password) {

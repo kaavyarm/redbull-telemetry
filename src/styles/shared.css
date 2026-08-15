@@ -12,10 +12,10 @@
 
 .auth-card {
   width: 340px;
-  padding: 28px;
+  padding: var(--space-8);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   border: 1px solid var(--border);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018)),
@@ -28,21 +28,21 @@
 }
 
 .auth-card .brand {
-  margin-bottom: 4px;
-  padding-bottom: 16px;
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-4);
 }
 
 .auth-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .auth-field span {
   font-family: "JetBrains Mono", monospace;
   color: var(--muted);
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
@@ -52,7 +52,7 @@
     linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
     rgba(2, 3, 5, 0.58);
   color: var(--text);
-  padding: 12px 13px;
+  padding: var(--space-3);
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
   outline: none;
@@ -91,17 +91,18 @@ thead th {
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   font-weight: 700;
-  padding: 0 12px 10px;
+  padding: 0 var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--border-soft);
 }
 
 tbody td {
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.035);
   color: #d9dde4;
+  line-height: var(--line-body);
 }
 
 tbody tr:hover td {
@@ -164,23 +165,29 @@ tbody tr.excluded-row td {
   z-index: 1;
 }
 
+/* VERTICAL RHYTHM -- one rule for the gap between stacked sections instead
+   of a hand-picked inline margin-top at every call site. */
+.stack > * + * {
+  margin-top: var(--space-6);
+}
+
 /* RECORD LAYOUT (list + detail: Sessions, Experiments, Issues, Components) */
 
 .record-layout {
   display: grid;
   grid-template-columns: 350px 1fr;
-  gap: 18px;
+  gap: var(--space-5);
 }
 
 .record-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .record-card {
   color: var(--text);
-  padding: 16px;
+  padding: var(--space-4);
   text-align: left;
   cursor: pointer;
 }
@@ -200,21 +207,21 @@ tbody tr.excluded-row td {
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   text-transform: uppercase;
-  letter-spacing: 0.11em;
+  letter-spacing: var(--tracking-label);
   font-weight: 700;
 }
 
 .record-card h3 {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   font-size: 18px;
   letter-spacing: -0.02em;
 }
 
 .record-card p {
   color: var(--muted);
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   font-size: 13px;
 }
 
@@ -225,7 +232,7 @@ tbody tr.excluded-row td {
 }
 
 .record-detail {
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 @media (max-width: 1100px) {
@@ -235,7 +242,7 @@ tbody tr.excluded-row td {
 }
 
 .section-card {
-  padding: 24px 26px;
+  padding: var(--space-6);
 }
 
 /* DETAIL / INFO BLOCKS (used across every session tab) */
@@ -243,20 +250,20 @@ tbody tr.excluded-row td {
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 11px;
-  margin-bottom: 16px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .info-block {
-  padding: 14px;
+  padding: var(--space-4);
 }
 
 .info-block p {
-  margin: 0 0 11px;
+  margin: 0 0 var(--space-3);
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   font-weight: 700;
 }
@@ -290,8 +297,8 @@ tbody tr.excluded-row td {
 /* ANALYSIS CARDS (used across every session tab) */
 
 .analysis-card {
-  padding: 18px;
-  margin-top: 16px;
+  padding: var(--space-5);
+  margin-top: var(--space-4);
 }
 
 .analysis-card p {
@@ -309,12 +316,12 @@ tbody tr.excluded-row td {
 
 .confidence {
   height: fit-content;
-  padding: 6px 10px;
+  padding: var(--space-2);
   border: 1px solid currentColor;
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
@@ -341,12 +348,12 @@ tbody tr.excluded-row td {
 
 .severity-badge {
   height: fit-content;
-  padding: 6px 10px;
+  padding: var(--space-2);
   border: 1px solid currentColor;
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -375,7 +382,7 @@ tbody tr.excluded-row td {
 .control-card {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--space-5);
 }
 
 .control-card p {
@@ -386,14 +393,23 @@ tbody tr.excluded-row td {
 .control-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
+}
+
+.control-row.driver-picker {
+  max-width: 280px;
+  margin-bottom: var(--space-5);
+}
+
+.laps-table {
+  margin-top: var(--space-4);
 }
 
 .control-row label {
   font-family: "JetBrains Mono", monospace;
   color: var(--muted);
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
@@ -405,7 +421,7 @@ tbody tr.excluded-row td {
     linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
     rgba(2, 3, 5, 0.58);
   color: var(--text);
-  padding: 12px 13px;
+  padding: var(--space-3);
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;
   outline: none;
@@ -421,14 +437,14 @@ tbody tr.excluded-row td {
 
 .form-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 6px;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .form-marker {
   width: 7px;
   height: 7px;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .form-marker.error {
@@ -444,11 +460,11 @@ tbody tr.excluded-row td {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px 16px;
+  gap: var(--space-4);
 }
 
 .form-grid .control-row {
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .form-actions.step-row input {
@@ -460,14 +476,14 @@ tbody tr.excluded-row td {
 .chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .chip {
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.03);
   color: var(--muted);
-  padding: 6px 12px;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
   text-transform: lowercase;
   letter-spacing: 0.04em;
@@ -492,29 +508,29 @@ tbody tr.excluded-row td {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .finding-location {
   display: block;
-  margin-top: 6px;
+  margin-top: var(--space-2);
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 
 .finding-badges {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: flex-end;
 }
 
 .finding-card-footer {
-  margin-top: 15px;
-  padding-top: 15px;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -523,8 +539,8 @@ tbody tr.excluded-row td {
 .chart-header {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .chart-header h3 {
@@ -534,7 +550,7 @@ tbody tr.excluded-row td {
 
 .chart-header span {
   display: block;
-  margin-top: 6px;
+  margin-top: var(--space-2);
   color: var(--muted);
   font-size: 13px;
 }
@@ -569,19 +585,19 @@ tbody tr.excluded-row td {
 }
 
 .radial-gauge-readout span {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 9px;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
 .gauge-row {
   display: flex;
-  gap: 24px;
+  gap: var(--space-6);
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: var(--space-5);
 }
 
 @media (max-width: 1100px) {
@@ -595,22 +611,22 @@ tbody tr.excluded-row td {
 .result-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 14px;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .result-card {
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.025);
-  padding: 12px 14px;
+  padding: var(--space-3) var(--space-4);
 }
 
 .result-card-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .result-card-header strong {
@@ -621,7 +637,7 @@ tbody tr.excluded-row td {
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   white-space: nowrap;
 }

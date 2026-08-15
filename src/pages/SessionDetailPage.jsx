@@ -25,7 +25,7 @@ function SessionDetailPage({ sessionId, onBack }) {
       <div className="page-header">
         <div>
           <p className="eyebrow">
-            <button className="secondary-button" onClick={onBack} style={{ marginRight: 10 }}>
+            <button className="secondary-button" onClick={onBack}>
               ← Sessions
             </button>
             {status === "success" && `${session.season} Round ${session.round_number}`}

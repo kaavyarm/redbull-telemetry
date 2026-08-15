@@ -7,6 +7,23 @@ export function formatMetric(value, unit = "", digits = 1) {
   return unit ? `${formatted} ${unit}` : formatted;
 }
 
+// Shared by SessionsPage's weekend chips, the sidebar's session tree, and
+// the command palette -- one lookup table so all three read the same
+// FP1/FP2/Qualifying/Race labels.
+const SESSION_TYPE_LABELS = {
+  practice_1: "FP1",
+  practice_2: "FP2",
+  practice_3: "FP3",
+  sprint_qualifying: "Sprint Qualifying",
+  sprint: "Sprint",
+  qualifying: "Qualifying",
+  race: "Race",
+};
+
+export function sessionTypeLabel(sessionType) {
+  return SESSION_TYPE_LABELS[sessionType] || sessionType;
+}
+
 export function getConfidenceClass(confidence) {
   return String(confidence || "pending").toLowerCase();
 }

@@ -35,6 +35,28 @@
   --cyan: #35d9ff;
   --cyan-glow: rgba(53, 217, 255, 0.28);
   --cyan-dim: rgba(53, 217, 255, 0.12);
+
+  /* 4/8pt spacing scale -- every padding/margin/gap in layout.css and
+     shared.css is meant to resolve to one of these rather than a one-off
+     pixel value, so spacing reads as consistent instead of hand-picked. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Typography rhythm -- two letter-spacing tiers instead of a different
+     value in nearly every uppercase-label rule, plus a real body
+     line-height so paragraph/table text isn't relying on the browser
+     default. */
+  --tracking-label: 0.08em;
+  --tracking-wide: 0.14em;
+  --line-body: 1.5;
 }
 
 body {
@@ -43,6 +65,7 @@ body {
   color: var(--text);
   font-family: "Rajdhani", Inter, system-ui, sans-serif;
   letter-spacing: 0.01em;
+  line-height: var(--line-body);
 }
 
 button {

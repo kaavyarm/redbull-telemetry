@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AuthGate from "./components/AuthGate";
 import Sidebar from "./components/Sidebar";
+import CommandPalette from "./components/CommandPalette";
 import ErrorFallback from "./components/ErrorFallback";
 import OverviewPage from "./pages/OverviewPage";
 import SessionsPage from "./pages/SessionsPage";
@@ -15,17 +16,48 @@ import "./styles/motion.css";
 function App() {
   const [activePage, setActivePage] = useState("Overview");
   const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   function goToPage(page) {
     setSelectedSessionId(null);
     setActivePage(page);
   }
 
+  // The one place that sets both pieces of routing state together -- used
+  // by the sidebar's session tree and the command palette, neither of
+  // which should have to know that "viewing a session" also means
+  // activePage === "Sessions" under the hood.
+  function goToSession(sessionId) {
+    setActivePage("Sessions");
+    setSelectedSessionId(sessionId);
+    setPaletteOpen(false);
+  }
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      } else if (event.key === "Escape") {
+        setPaletteOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <AuthGate>
       {(session) => (
         <div className="app">
-          <Sidebar activePage={activePage} setActivePage={goToPage} userEmail={session.user.email} />
+          <Sidebar
+            activePage={activePage}
+            setActivePage={goToPage}
+            selectedSessionId={selectedSessionId}
+            onSelectSession={goToSession}
+            onOpenPalette={() => setPaletteOpen(true)}
+            userEmail={session.user.email}
+          />
 
           <main className="main">
             {/* Scoped to page content, not the whole app -- the sidebar
@@ -39,7 +71,7 @@ function App() {
             >
               {activePage === "Overview" && <OverviewPage />}
               {activePage === "Sessions" && selectedSessionId === null && (
-                <SessionsPage onSelectSession={setSelectedSessionId} />
+                <SessionsPage onSelectSession={goToSession} />
               )}
               {activePage === "Sessions" && selectedSessionId !== null && (
                 <SessionDetailPage
@@ -49,6 +81,10 @@ function App() {
               )}
             </Sentry.ErrorBoundary>
           </main>
+
+          {paletteOpen && (
+            <CommandPalette onSelectSession={goToSession} onClose={() => setPaletteOpen(false)} />
+          )}
         </div>
       )}
     </AuthGate>

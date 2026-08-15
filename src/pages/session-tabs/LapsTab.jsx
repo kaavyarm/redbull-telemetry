@@ -27,7 +27,7 @@ function LapsTab({ sessionId, onViewTelemetry }) {
 
   return (
     <div className="section-card">
-      <div className="control-row" style={{ maxWidth: 280, marginBottom: 18 }}>
+      <div className="control-row driver-picker">
         <label>Driver</label>
         <select value={effectiveDriverId ?? ""} onChange={(e) => setDriverId(e.target.value)}>
           {results.map((r) => (
@@ -64,7 +64,7 @@ function LapsTab({ sessionId, onViewTelemetry }) {
             </ResponsiveContainer>
           </div>
 
-          <table style={{ marginTop: 18 }}>
+          <table className="laps-table">
             <thead>
               <tr>
                 <th>Lap</th>

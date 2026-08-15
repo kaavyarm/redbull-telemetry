@@ -84,7 +84,7 @@ function SetupTab({ sessionId }) {
   if (stintStatus === "error") return <div className="section-card"><h3>Couldn't load setup data</h3><p>{stintError.message}</p></div>;
 
   return (
-    <>
+    <div className="stack">
       {degradationSummary && (
         <div className="section-card">
           <h3>Degradation vs. field</h3>
@@ -111,7 +111,7 @@ function SetupTab({ sessionId }) {
         </div>
       )}
 
-      <div className="section-card" style={{ marginTop: degradationSummary ? 18 : 0 }}>
+      <div className="section-card">
         <h3>Compound pace summary</h3>
         {compoundStatus === "success" && compounds.length === 0 && (
           <p>No compound had enough clean laps (3+) for a trustworthy average this session.</p>
@@ -144,7 +144,7 @@ function SetupTab({ sessionId }) {
         )}
       </div>
 
-      <div className="section-card" style={{ marginTop: 18 }}>
+      <div className="section-card">
         <h3>Stints</h3>
         <table>
           <thead>
@@ -182,7 +182,7 @@ function SetupTab({ sessionId }) {
       </div>
 
       {deltaStatus === "success" && revisionDeltas.length > 0 && (
-        <div className="section-card" style={{ marginTop: 18 }}>
+        <div className="section-card">
           <h3>Stint-to-stint pace delta</h3>
           <table>
             <thead>
@@ -210,7 +210,7 @@ function SetupTab({ sessionId }) {
           </table>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
