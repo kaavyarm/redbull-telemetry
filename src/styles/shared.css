@@ -292,10 +292,16 @@ tbody tr.excluded-row td {
   margin-bottom: var(--space-4);
 }
 
-/* StatusCard (Overview page's stat tiles) -- h3 has a global margin:0
-   reset (layout.css) but <p> doesn't, so its label was falling back to the
-   browser's default ~1em paragraph margin while the value/detail lines had
-   none, producing a much bigger gap above the number than below it. */
+/* StatusCard (Overview page's stat tiles) -- had no padding at all, so its
+   text sat flush against the card border on every side. h3 also has a
+   global margin:0 reset (layout.css) but <p> doesn't, so its label was
+   additionally falling back to the browser's default ~1em paragraph
+   margin while the value/detail lines had none, producing a much bigger
+   gap above the number than below it. */
+.status-card {
+  padding: var(--space-4);
+}
+
 .status-card p {
   margin: 0 0 var(--space-2);
 }
