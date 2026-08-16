@@ -1,10 +1,47 @@
 # Red Bull Telemetry — 2026 Season
 
-A single-user analytics dashboard for Red Bull's 2026 F1 season, built on
-real session data pulled from [FastF1](https://docs.fastf1.dev) (the
-official F1 timing feed) rather than synthetic data. Covers session
+**Live: [redbull-telemetry.vercel.app](https://redbull-telemetry.vercel.app)**
+
+A single-user F1 analytics dashboard built on real session data pulled from
+[FastF1](https://docs.fastf1.dev) (the official F1 timing feed) rather than
+synthetic data — every lap, sector, and telemetry trace in it happened in a
+real (fictional 2026-season) session. Covers a full season's session
 exploration, lap-by-lap pace analysis, telemetry visualization, lap
-comparison, and tire-strategy/degradation analysis.
+comparison, tire-strategy simulation, and a rule-based insights engine, all
+themed in Red Bull Racing's actual 2026 livery colors.
+
+![Telemetry tab: multi-channel trace + track map with detected corners and braking points](docs/images/telemetry-tab.png)
+
+## Features
+
+- **Season Trends** — round-over-round finishing position, points, and tire
+  degradation across the whole season, computed client-side from the same
+  per-session data every other page uses.
+- **Session Explorer** — every practice/qualifying/sprint/race session for
+  every ingested weekend, with a command palette (`⌘K`) for jumping straight
+  to one.
+- **Results, Laps, Telemetry, Compare** — full classification with CSV
+  export; lap-by-lap pace evolution with clean-lap detection; a synced
+  multi-channel telemetry trace (speed/throttle/brake/gear/RPM/DRS) plotted
+  alongside a track map with algorithmically detected corners (curvature
+  analysis over consecutive position samples) and braking points; a
+  side-by-side lap comparison tool with real telemetry overlays.
+- **Setup** — tire compound pace and degradation by stint, color-coded to
+  the real Pirelli compound convention, with per-stint lap-time sparklines
+  and a Red-Bull-vs-field degradation comparison.
+- **Strategy** — a "what if we'd pitted lap N instead" simulator: projects
+  lap times outside the laps actually run using each stint's own fitted
+  degradation trend, and is explicit about it — refuses to show a simulated
+  number when a stint doesn't have enough clean laps to trust the trend,
+  rather than presenting false precision.
+- **Insights** — a small rule-based engine (stint degradation vs. the field,
+  sector time vs. teammate, braking efficiency vs. teammate, pace
+  consistency vs. teammate, time left on the table vs. the theoretical
+  optimal lap) that flags real findings from the ingested data, not
+  canned examples.
+- Mobile-responsive throughout (off-canvas navigation, horizontally
+  scrolling tables with sticky headers), and checked against WCAG AA
+  contrast requirements.
 
 ## Architecture
 
@@ -22,6 +59,12 @@ Cleaning pipeline            Python analytics service     React frontend
 - **Ingestion** (`ingest/`) — pulls a race weekend from FastF1, normalizes
   it into the relational schema, and writes it to Postgres idempotently
   (re-running a weekend replaces its rows rather than duplicating them).
+  Supports tiered telemetry retention (full car/position telemetry for Red
+  Bull's drivers and that session's closest rivals, results/laps/stints for
+  everyone else) and a telemetry-skip mode for a cheap, broad season
+  backfill — the two raw-telemetry tables are ~98% of this project's
+  database size, so a full season only fits a free-tier storage budget by
+  being deliberate about which sessions get full detail.
 - **Cleaning** (`cleaning/`) — flags deleted/anomalous laps, safety-car and
   VSC periods, and incomplete sessions. Nothing is ever deleted from the
   raw data; every exclusion is a separate row with a stated reason.
@@ -33,10 +76,14 @@ Cleaning pipeline            Python analytics service     React frontend
   SQL: optimal-lap estimation, stint degradation regression, a telemetry
   delta-time trace between two laps, and per-lap anomaly detection. Runs
   as a batch job and persists results to `derived_metrics`.
+- **Insights engine** (`insights/`) — reads already-computed
+  `derived_metrics`/laps/results back from Postgres and evaluates a small
+  set of rule functions against them, writing findings to
+  `insight_findings`. Adding a rule is "write a function, append it to a
+  list" — the evaluation/persistence code doesn't change.
 - **Frontend** (`src/`) — React 19 + Vite, querying Postgres directly
   through Supabase's PostgREST API using purpose-built, narrowly-scoped
-  queries (never a raw telemetry dump). Shares its design system with a
-  sibling internal project.
+  queries (never a raw telemetry dump).
 - **Observability** (`observability/`, `src/lib/sentry.js`) — structured
   logging and optional Sentry reporting on both the Python pipeline and
   the frontend; both are no-ops when no Sentry DSN is configured.
@@ -76,9 +123,11 @@ Supabase project's URL/anon key for the frontend, and `DATABASE_URL` /
 `SUPABASE_OWNER_USER_ID` for the Python pipeline.
 
 ```bash
-python scripts/ingest_weekend.py 2026 11      # pull + ingest a weekend
+python scripts/ingest_weekend.py 2026 11      # pull + ingest one weekend
+python scripts/ingest_season.py 2026          # pull + ingest every elapsed round
 python scripts/clean_weekend.py 2026 11       # flag data-quality issues
 python scripts/compute_derived_metrics.py 2026 11   # run the analytics service
+python scripts/compute_insights.py 2026 11    # evaluate the insights engine
 ```
 
 ## Testing
