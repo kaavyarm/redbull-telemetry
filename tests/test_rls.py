@@ -5,10 +5,14 @@ that file's docstring). Gated on DATABASE_URL like
 tests/test_analytics_parity.py, since this needs a real database, not a
 mock.
 
-Covers the ownership model end to end: an owner reads only their own data,
-a different authenticated user is denied by policy, an unauthenticated
-request is denied at the grant level, and the ownership trigger blocks a
-user_id reassignment.
+Reads are public (both `anon` and `authenticated` can read any row --
+this is a single-owner portfolio project with nothing sensitive in a
+season of F1 telemetry, so gating reads behind a login only added
+friction without protecting anything real). Covers that end to end: any
+role can read any session/laps regardless of who owns it, and writes
+stay fully denied to both `anon` and `authenticated` -- only the
+service_role-equivalent ingestion pipeline can write, and the ownership
+trigger still blocks a user_id reassignment on that path.
 """
 import json
 import os
@@ -125,40 +129,64 @@ def test_owner_can_read_their_own_laps(conn, owners, owned_session):
             assert cur.fetchone() is not None
 
 
-def test_different_authenticated_user_sees_no_session(conn, owners, owned_session):
+def test_different_authenticated_user_can_also_read_the_session(conn, owners, owned_session):
+    """Reads are public -- who owns a row doesn't gate who can see it
+    anymore, so a second authenticated user reads it just as freely as
+    the owner does."""
     with as_user(conn, owners["b"]):
         with conn.cursor() as cur:
             cur.execute("select id from public.sessions where id = %s", (owned_session["session_id"],))
-            assert cur.fetchone() is None
+            assert cur.fetchone() is not None
 
 
-def test_different_authenticated_user_sees_no_laps(conn, owners, owned_session):
+def test_different_authenticated_user_can_also_read_the_laps(conn, owners, owned_session):
     """Laps has no owner column of its own -- RLS reaches it only via the
-    join back to sessions.user_id (see schema.sql's file header on why).
-    This is what actually proves that join-based policy works, not just
-    the direct-owner-column check on sessions itself."""
+    join back to sessions (see schema.sql's file header on why). This is
+    what actually proves the join-based policy is open too, not just the
+    direct policy on sessions itself."""
     with as_user(conn, owners["b"]):
         with conn.cursor() as cur:
             cur.execute("select id from public.laps where session_id = %s", (owned_session["session_id"],))
-            assert cur.fetchone() is None
+            assert cur.fetchone() is not None
 
 
-def test_anon_role_denied_at_the_grant_level(conn, owned_session):
-    """schema.sql grants SELECT to `authenticated` only -- anon has no
-    grant on these tables at all, so this must fail before RLS is even
-    evaluated, not just return zero rows."""
+def test_anon_role_can_read_the_session(conn, owned_session):
+    """schema.sql grants SELECT to both `anon` and `authenticated`, with
+    an unconditional `using (true)` policy -- an unauthenticated request
+    reads real data, not an empty/denied result."""
     with as_user(conn, None):
         with conn.cursor() as cur:
-            with pytest.raises(psycopg2.errors.InsufficientPrivilege):
-                cur.execute("select id from public.sessions where id = %s", (owned_session["session_id"],))
-    conn.rollback()
+            cur.execute("select id from public.sessions where id = %s", (owned_session["session_id"],))
+            assert cur.fetchone() is not None
+
+
+def test_anon_role_can_read_the_laps(conn, owned_session):
+    """Same as above, through the join-based child-table policy rather
+    than the direct policy on sessions."""
+    with as_user(conn, None):
+        with conn.cursor() as cur:
+            cur.execute("select id from public.laps where session_id = %s", (owned_session["session_id"],))
+            assert cur.fetchone() is not None
 
 
 def test_authenticated_role_has_no_write_grants(conn, owners, owned_session):
     """Writes belong solely to the service_role-equivalent ingestion
     pipeline (see schema.sql's file header) -- `authenticated` must not be
-    able to insert/update/delete even its own owned rows."""
+    able to insert/update/delete even a row it's fully able to read."""
     with as_user(conn, owners["a"]):
+        with conn.cursor() as cur:
+            with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+                cur.execute(
+                    "update public.sessions set event_name = 'hacked' where id = %s",
+                    (owned_session["session_id"],),
+                )
+    conn.rollback()
+
+
+def test_anon_role_has_no_write_grants(conn, owned_session):
+    """Same as above for `anon` -- opening up reads to everyone must not
+    have accidentally opened up writes too."""
+    with as_user(conn, None):
         with conn.cursor() as cur:
             with pytest.raises(psycopg2.errors.InsufficientPrivilege):
                 cur.execute(

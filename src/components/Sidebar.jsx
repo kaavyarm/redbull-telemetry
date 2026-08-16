@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { signOut, listSessions, getFindingsSeverityBySession } from "../lib/api";
+import { listSessions, getFindingsSeverityBySession } from "../lib/api";
 import { useAsync } from "../hooks/useAsync";
 import { sessionTypeLabel, sessionTypeRank, severityRank } from "../utils/format";
 
@@ -42,8 +42,8 @@ function maxSeverityBySession(rows) {
   return map;
 }
 
-function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession, onOpenPalette, userEmail, open = false }) {
-  const { data: sessions } = useAsync(() => listSessions(), []);
+function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession, onOpenPalette, open = false }) {
+  const { status: sessionsStatus, data: sessions } = useAsync(() => listSessions(), []);
   const { data: severityRows } = useAsync(() => getFindingsSeverityBySession(), []);
   const [expanded, setExpanded] = useState(() => new Set());
 
@@ -82,12 +82,15 @@ function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession
         </div>
       </div>
 
-      {/* Reflects a real state (AuthGate only renders this component once a
-          Supabase auth session exists) -- not a decorative claim. */}
-      <div className="system-status">
-        <span className="system-status-dot pulse-glow" />
-        <span>Session active</span>
-      </div>
+      {/* Reflects a real state (whether the season-list query actually
+          succeeded) rather than a decorative claim -- there's no more auth
+          session to tie this to now that reads are public. */}
+      {sessionsStatus === "success" && (
+        <div className="system-status">
+          <span className="system-status-dot pulse-glow" />
+          <span>Live</span>
+        </div>
+      )}
 
       <nav className="nav">
         {NAV_PAGES.map((page) => (
@@ -143,12 +146,14 @@ function Sidebar({ activePage, setActivePage, selectedSessionId, onSelectSession
         ))}
       </div>
 
-      <div className="sidebar-account">
-        <p className="sidebar-account-email">{userEmail}</p>
-        <button className="secondary-button sidebar-sign-out" onClick={() => signOut()}>
-          Sign out
-        </button>
-      </div>
+      <a
+        className="sidebar-source-link"
+        href="https://github.com/kaavyarm/redbull-telemetry"
+        target="_blank"
+        rel="noreferrer"
+      >
+        View source on GitHub ↗
+      </a>
     </aside>
   );
 }

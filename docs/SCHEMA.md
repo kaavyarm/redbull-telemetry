@@ -70,15 +70,18 @@ Notable characteristics that shaped the schema:
   tables run into tens of millions of rows — a JSONB blob per row was
   never a serious option at this scale. `race_control_messages.details`
   is the one exception, for the reason above.
-- **Single-user ownership.** Every table hangs off `sessions` via foreign
-  key, so ownership lives in exactly one place (`sessions.user_id`) and
-  row-level security on every child table is a join back to its session
-  rather than a duplicated owner column per table. A trigger
-  (`keep_session_user_id`) blocks reassigning ownership after insert.
-- **Read-only for the frontend.** Only `SELECT` is granted to the
-  `authenticated` role; all writes go through the ingestion pipeline
-  using the Supabase `service_role` key, which bypasses RLS by platform
-  default. There is no browser-driven writer.
+- **Single-user ownership, public reads.** Every table hangs off
+  `sessions` via foreign key, so ownership lives in exactly one place
+  (`sessions.user_id`) and row-level security on every child table is a
+  join back to its session rather than a duplicated owner column per
+  table. A trigger (`keep_session_user_id`) blocks reassigning ownership
+  after insert. `user_id` is still set at ingestion time for provenance,
+  but it no longer gates reads -- there's nothing sensitive in a season
+  of F1 telemetry, so both `anon` and `authenticated` can read every row.
+- **Read-only for the frontend.** Only `SELECT` is granted to `anon`/
+  `authenticated`; all writes go through the ingestion pipeline using the
+  Supabase `service_role` key, which bypasses RLS by platform default.
+  There is no browser-driven writer.
 - **Setup revisions are tyre-only.** FastF1's public feed only exposes
   tyre configuration (compound, tyre life, fresh/used) per stint — there
   is no car setup data (wing levels, suspension, etc.) in the source.

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import AuthGate from "./components/AuthGate";
 import Sidebar from "./components/Sidebar";
 import CommandPalette from "./components/CommandPalette";
 import ErrorFallback from "./components/ErrorFallback";
@@ -54,60 +53,55 @@ function App() {
   }, []);
 
   return (
-    <AuthGate>
-      {(session) => (
-        <div className="app">
-          <button
-            className="mobile-menu-toggle"
-            onClick={() => setSidebarOpen((open) => !open)}
-            aria-label="Toggle navigation"
-          >
-            <svg width="20" height="14" viewBox="0 0 20 14" fill="none" aria-hidden="true">
-              <path d="M1 1h18M1 7h18M1 13h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-          {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+    <div className="app">
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setSidebarOpen((open) => !open)}
+        aria-label="Toggle navigation"
+      >
+        <svg width="20" height="14" viewBox="0 0 20 14" fill="none" aria-hidden="true">
+          <path d="M1 1h18M1 7h18M1 13h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+      {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
-          <Sidebar
-            activePage={activePage}
-            setActivePage={goToPage}
-            selectedSessionId={selectedSessionId}
-            onSelectSession={goToSession}
-            onOpenPalette={() => setPaletteOpen(true)}
-            userEmail={session.user.email}
-            open={sidebarOpen}
-          />
+      <Sidebar
+        activePage={activePage}
+        setActivePage={goToPage}
+        selectedSessionId={selectedSessionId}
+        onSelectSession={goToSession}
+        onOpenPalette={() => setPaletteOpen(true)}
+        open={sidebarOpen}
+      />
 
-          <main className="main">
-            {/* Scoped to page content, not the whole app -- the sidebar
-                stays usable so a crash on one page doesn't strand the user;
-                they can navigate elsewhere. key= forces a fresh boundary
-                (and remount) on navigation so a stale error doesn't linger
-                after moving to a different page. */}
-            <Sentry.ErrorBoundary
-              key={`${activePage}-${selectedSessionId ?? "list"}`}
-              fallback={ErrorFallback}
-            >
-              {activePage === "Overview" && <OverviewPage />}
-              {activePage === "Trends" && <TrendsPage />}
-              {activePage === "Sessions" && selectedSessionId === null && (
-                <SessionsPage onSelectSession={goToSession} />
-              )}
-              {activePage === "Sessions" && selectedSessionId !== null && (
-                <SessionDetailPage
-                  sessionId={selectedSessionId}
-                  onBack={() => setSelectedSessionId(null)}
-                />
-              )}
-            </Sentry.ErrorBoundary>
-          </main>
-
-          {paletteOpen && (
-            <CommandPalette onSelectSession={goToSession} onClose={() => setPaletteOpen(false)} />
+      <main className="main">
+        {/* Scoped to page content, not the whole app -- the sidebar
+            stays usable so a crash on one page doesn't strand the user;
+            they can navigate elsewhere. key= forces a fresh boundary
+            (and remount) on navigation so a stale error doesn't linger
+            after moving to a different page. */}
+        <Sentry.ErrorBoundary
+          key={`${activePage}-${selectedSessionId ?? "list"}`}
+          fallback={ErrorFallback}
+        >
+          {activePage === "Overview" && <OverviewPage />}
+          {activePage === "Trends" && <TrendsPage />}
+          {activePage === "Sessions" && selectedSessionId === null && (
+            <SessionsPage onSelectSession={goToSession} />
           )}
-        </div>
+          {activePage === "Sessions" && selectedSessionId !== null && (
+            <SessionDetailPage
+              sessionId={selectedSessionId}
+              onBack={() => setSelectedSessionId(null)}
+            />
+          )}
+        </Sentry.ErrorBoundary>
+      </main>
+
+      {paletteOpen && (
+        <CommandPalette onSelectSession={goToSession} onClose={() => setPaletteOpen(false)} />
       )}
-    </AuthGate>
+    </div>
   );
 }
 

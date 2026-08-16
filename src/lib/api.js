@@ -8,22 +8,12 @@ import { logQueryTiming } from "./logger";
 // position_telemetry_samples are only ever queried by (session_id, lap_id),
 // which is covered by a dedicated index (see supabase/schema.sql).
 //
-// Every query and auth call goes through runQuery/runAuth so timing is
-// measured and logged in exactly one place rather than repeated at every
-// call site.
+// Every query goes through runQuery so timing is measured and logged in
+// exactly one place rather than repeated at every call site.
 
 async function runQuery(label, queryBuilder) {
   const start = performance.now();
   const { data, error } = await queryBuilder;
-  const durationMs = Math.round(performance.now() - start);
-  logQueryTiming(label, durationMs, error);
-  if (error) throw error;
-  return data;
-}
-
-async function runAuth(label, authPromise) {
-  const start = performance.now();
-  const { data, error } = await authPromise;
   const durationMs = Math.round(performance.now() - start);
   logQueryTiming(label, durationMs, error);
   if (error) throw error;
@@ -183,23 +173,4 @@ export async function getFindingsSeverityBySession() {
     "getFindingsSeverityBySession",
     supabase.from("insight_findings").select("session_id, severity")
   );
-}
-
-// -- auth --
-
-export async function signInWithPassword(email, password) {
-  return runAuth("signInWithPassword", supabase.auth.signInWithPassword({ email, password }));
-}
-
-export async function signOut() {
-  return runAuth("signOut", supabase.auth.signOut());
-}
-
-export function getCurrentSession() {
-  return supabase.auth.getSession();
-}
-
-export function onAuthStateChange(callback) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
-  return data.subscription;
 }

@@ -2,13 +2,14 @@
 
 **Live: [redbull-telemetry.vercel.app](https://redbull-telemetry.vercel.app)**
 
-A single-user F1 analytics dashboard built on real session data pulled from
+An F1 analytics dashboard built on real session data pulled from
 [FastF1](https://docs.fastf1.dev) (the official F1 timing feed) rather than
 synthetic data — every lap, sector, and telemetry trace in it happened in a
 real (fictional 2026-season) session. Covers a full season's session
 exploration, lap-by-lap pace analysis, telemetry visualization, lap
 comparison, tire-strategy simulation, and a rule-based insights engine, all
-themed in Red Bull Racing's actual 2026 livery colors.
+themed in Red Bull Racing's actual 2026 livery colors. Fully public and
+read-only — click the live link, no account needed.
 
 ![Telemetry tab: multi-channel trace + track map with detected corners and braking points](docs/images/telemetry-tab.png)
 
@@ -93,10 +94,14 @@ strategy.
 
 ## Data model
 
-Single-user ownership: every table hangs off `sessions` via foreign key,
-and Postgres row-level security scopes every read to the signed-in user.
-Telemetry and lap data are typed columns throughout (not JSON blobs) —
-the schema is designed from the actual shape of FastF1's data, not
+Single-owner ingestion, public reads: every table hangs off `sessions` via
+foreign key for provenance, but Postgres row-level security grants
+unrestricted read access to everyone — there's nothing sensitive in a
+season of F1 telemetry, so there's no login wall between the data and
+anyone looking at it. Writes are a different story: only the ingestion
+pipeline, authenticated with the Supabase `service_role` key, can write at
+all. Telemetry and lap data are typed columns throughout (not JSON blobs)
+— the schema is designed from the actual shape of FastF1's data, not
 assumptions about it. See `docs/SCHEMA.md` for the full design rationale.
 
 ## Local development

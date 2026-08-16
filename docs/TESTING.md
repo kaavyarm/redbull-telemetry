@@ -14,13 +14,14 @@
   (`analytics/reference.py`). The views are not considered trustworthy
   until this suite is green.
 - **RLS policy tests** (`tests/test_rls.py`) — verifies the row-level
-  security model end to end against a real Postgres: an owner can read
-  their own data, a different authenticated user is denied by policy
-  (including through child tables that have no owner column of their own
-  and only inherit access via a join back to `sessions`), an
-  unauthenticated request is denied at the grant level (not just empty
-  results), and the ownership-protection trigger blocks a `user_id`
-  reassignment.
+  security model end to end against a real Postgres: reads are public (a
+  different authenticated user, and an unauthenticated `anon` request,
+  both read any row -- including through child tables that have no owner
+  column of their own and only inherit access via a join back to
+  `sessions`), writes stay fully denied to both roles at the grant level
+  (not just by policy), and the ownership-protection trigger blocks a
+  `user_id` reassignment on the one path that can write at all (the
+  service-role-equivalent ingestion pipeline).
 - **Integration test** (in `tests/test_analytics_service.py`) — runs the
   full read-from-Postgres → compute → write-to-`derived_metrics` pipeline
   against a real ingested session.

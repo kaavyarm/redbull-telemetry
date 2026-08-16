@@ -442,11 +442,15 @@ create trigger sessions_keep_user_id
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
--- Read-only for `authenticated`, scoped to the single owner. Every child
--- table's policy is a join back to sessions rather than its own owner
--- column — see the file header for why. Writes are not exposed to
--- `authenticated` at all; the ingestion pipeline writes via the
--- service_role key, which bypasses RLS by Supabase platform default.
+-- Public read-only, to both `anon` and `authenticated` -- there's nothing
+-- sensitive in a season's worth of F1 telemetry, and this is a single-
+-- owner portfolio project with no per-user data to isolate, so gating
+-- reads behind a login only added friction for anyone looking at it
+-- without actually protecting anything. Writes are still not exposed to
+-- either role at all; the ingestion pipeline writes via the service_role
+-- key, which bypasses RLS by Supabase platform default. `user_id` stays
+-- on every table as an ingestion-time ownership/provenance column (see
+-- the file header), it just isn't used to filter reads anymore.
 
 alter table public.teams enable row level security;
 alter table public.drivers enable row level security;
@@ -468,147 +472,101 @@ alter table public.derived_metrics enable row level security;
 alter table public.insight_findings enable row level security;
 
 -- Reference tables (teams, drivers) aren't owned by any one session, so
--- they're readable by any authenticated (i.e. the one signed-in) user
--- rather than joined through sessions.
-create policy "Authenticated users can read teams"
-  on public.teams for select to authenticated using (true);
+-- they're readable directly rather than joined through sessions.
+create policy "Anyone can read teams"
+  on public.teams for select to anon, authenticated using (true);
 
-create policy "Authenticated users can read drivers"
-  on public.drivers for select to authenticated using (true);
+create policy "Anyone can read drivers"
+  on public.drivers for select to anon, authenticated using (true);
 
-create policy "Owner can read their sessions"
-  on public.sessions for select to authenticated
-  using (auth.uid() = user_id);
+create policy "Anyone can read sessions"
+  on public.sessions for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their session results"
-  on public.session_results for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = session_results.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read session_results"
+  on public.session_results for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their track status events"
-  on public.track_status_events for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = track_status_events.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read track_status_events"
+  on public.track_status_events for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their session status events"
-  on public.session_status_events for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = session_status_events.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read session_status_events"
+  on public.session_status_events for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their weather samples"
-  on public.weather_samples for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = weather_samples.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read weather_samples"
+  on public.weather_samples for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their race control messages"
-  on public.race_control_messages for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = race_control_messages.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read race_control_messages"
+  on public.race_control_messages for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their setup revisions"
-  on public.setup_revisions for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = setup_revisions.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read setup_revisions"
+  on public.setup_revisions for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their stints"
-  on public.stints for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = stints.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read stints"
+  on public.stints for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their laps"
-  on public.laps for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = laps.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read laps"
+  on public.laps for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their car telemetry"
-  on public.car_telemetry_samples for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = car_telemetry_samples.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read car_telemetry"
+  on public.car_telemetry_samples for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their position telemetry"
-  on public.position_telemetry_samples for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = position_telemetry_samples.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read position_telemetry"
+  on public.position_telemetry_samples for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their caution periods"
-  on public.caution_periods for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = caution_periods.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read caution_periods"
+  on public.caution_periods for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their lap exclusions"
-  on public.lap_exclusions for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = lap_exclusions.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read lap_exclusions"
+  on public.lap_exclusions for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their session quality flags"
-  on public.session_quality_flags for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = session_quality_flags.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read session_quality_flags"
+  on public.session_quality_flags for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their derived metrics"
-  on public.derived_metrics for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = derived_metrics.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read derived_metrics"
+  on public.derived_metrics for select to anon, authenticated
+  using (true);
 
-create policy "Owner can read their insight findings"
-  on public.insight_findings for select to authenticated
-  using (exists (
-    select 1 from public.sessions s
-    where s.id = insight_findings.session_id and s.user_id = auth.uid()
-  ));
+create policy "Anyone can read insight_findings"
+  on public.insight_findings for select to anon, authenticated
+  using (true);
 
 -- ============================================================
 -- GRANTS
 -- ============================================================
 -- RLS policies control which rows a role can touch, but Postgres still
 -- requires a base table-level GRANT before RLS is even evaluated. Only
--- SELECT is granted to `authenticated` — see the file header on why
--- writes aren't exposed to this role at all.
+-- SELECT is granted to either role -- see the file header on why writes
+-- aren't exposed to the frontend at all.
 
-grant usage on schema public to authenticated;
-grant select on public.teams to authenticated;
-grant select on public.drivers to authenticated;
-grant select on public.sessions to authenticated;
-grant select on public.session_results to authenticated;
-grant select on public.track_status_events to authenticated;
-grant select on public.session_status_events to authenticated;
-grant select on public.weather_samples to authenticated;
-grant select on public.race_control_messages to authenticated;
-grant select on public.setup_revisions to authenticated;
-grant select on public.stints to authenticated;
-grant select on public.laps to authenticated;
-grant select on public.car_telemetry_samples to authenticated;
-grant select on public.position_telemetry_samples to authenticated;
-grant select on public.caution_periods to authenticated;
-grant select on public.lap_exclusions to authenticated;
-grant select on public.session_quality_flags to authenticated;
-grant select on public.derived_metrics to authenticated;
-grant select on public.insight_findings to authenticated;
+grant usage on schema public to anon, authenticated;
+grant select on public.teams to anon, authenticated;
+grant select on public.drivers to anon, authenticated;
+grant select on public.sessions to anon, authenticated;
+grant select on public.session_results to anon, authenticated;
+grant select on public.track_status_events to anon, authenticated;
+grant select on public.session_status_events to anon, authenticated;
+grant select on public.weather_samples to anon, authenticated;
+grant select on public.race_control_messages to anon, authenticated;
+grant select on public.setup_revisions to anon, authenticated;
+grant select on public.stints to anon, authenticated;
+grant select on public.laps to anon, authenticated;
+grant select on public.car_telemetry_samples to anon, authenticated;
+grant select on public.position_telemetry_samples to anon, authenticated;
+grant select on public.caution_periods to anon, authenticated;
+grant select on public.lap_exclusions to anon, authenticated;
+grant select on public.session_quality_flags to anon, authenticated;
+grant select on public.derived_metrics to anon, authenticated;
+grant select on public.insight_findings to anon, authenticated;

@@ -306,23 +306,21 @@
   box-shadow: 0 0 6px rgba(200, 145, 50, 0.7);
 }
 
-.sidebar-account {
+.sidebar-source-link {
+  display: block;
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px solid var(--border-soft);
-}
-
-.sidebar-account-email {
-  margin: 0 0 var(--space-2);
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
-  word-break: break-all;
+  text-decoration: none;
+  transition: color 180ms ease;
 }
 
-.sidebar-sign-out {
-  width: 100%;
+.sidebar-source-link:hover {
+  color: var(--blue-bright);
 }
 
 /* COMMAND PALETTE */
