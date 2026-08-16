@@ -1,6 +1,6 @@
 import { listSessions } from "../lib/api";
 import { useAsync } from "../hooks/useAsync";
-import { sessionTypeLabel } from "../utils/format";
+import { sessionTypeLabel, sessionTypeRank } from "../utils/format";
 
 function groupByWeekend(sessions) {
   const groups = new Map();
@@ -10,6 +10,12 @@ function groupByWeekend(sessions) {
       groups.set(key, { key, event_name: s.event_name, location: s.location, country: s.country, sessions: [] });
     }
     groups.get(key).sessions.push(s);
+  }
+  // API order isn't chronological -- sort each weekend's chips into a
+  // stable FP1/FP2/FP3/Sprint Qualifying/Sprint/Qualifying/Race order so
+  // they're in the same spot on every card instead of shuffling per weekend.
+  for (const weekend of groups.values()) {
+    weekend.sessions.sort((a, b) => sessionTypeRank(a.session_type) - sessionTypeRank(b.session_type));
   }
   return [...groups.values()];
 }

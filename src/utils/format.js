@@ -24,8 +24,25 @@ export function sessionTypeLabel(sessionType) {
   return SESSION_TYPE_LABELS[sessionType] || sessionType;
 }
 
+// Chronological weekend order, derived from SESSION_TYPE_LABELS' own key
+// order rather than a second hand-maintained list -- unknown session types
+// sort after every known one instead of disappearing.
+const SESSION_TYPE_ORDER = Object.keys(SESSION_TYPE_LABELS);
+
+export function sessionTypeRank(sessionType) {
+  const rank = SESSION_TYPE_ORDER.indexOf(sessionType);
+  return rank === -1 ? SESSION_TYPE_ORDER.length : rank;
+}
+
 export function getConfidenceClass(confidence) {
   return String(confidence || "pending").toLowerCase();
+}
+
+// laps.compound / stints.compound are stored as SOFT/MEDIUM/HARD/
+// INTERMEDIATE/WET (see supabase/schema.sql) -- CSS classes are lowercase
+// by convention here, same as getConfidenceClass/getSeverityClass above.
+export function getCompoundClass(compound) {
+  return String(compound || "unknown").toLowerCase();
 }
 
 // insight_findings.severity is 'info'|'low'|'medium'|'high' -- not

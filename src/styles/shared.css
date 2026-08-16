@@ -65,7 +65,7 @@
 
 .auth-error {
   margin: 0;
-  color: var(--blood-bright);
+  color: var(--blood-text);
   font-size: 13px;
 }
 
@@ -98,6 +98,16 @@ table {
   font-size: 13px;
 }
 
+/* Bounds a long table (a full race's laps, a chaotic race's stints) to a
+   comfortable scrollable height with its own scroll context, rather than
+   letting it stretch the whole page -- also what makes thead th's
+   position:sticky below actually work, since the enclosing .section-card
+   has overflow:hidden and doesn't provide one itself. */
+.table-scroll {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
 .sparkline {
   display: block;
 }
@@ -116,6 +126,14 @@ thead th {
   font-weight: 700;
   padding: 0 var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--border-soft);
+  /* Long tables (a full race's laps, a session's stints) scroll the whole
+     page -- keeps column labels in view instead of scrolling out of sight,
+     without a wrapper/layout change. Solid background, not the card's
+     usual translucent one, so body rows don't show through underneath. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgb(9, 10, 14);
 }
 
 tbody td {
@@ -380,7 +398,7 @@ tbody tr.excluded-row td {
 
 .severity-badge.high {
   background: rgba(115, 12, 28, 0.16);
-  color: var(--blood-bright);
+  color: var(--blood-text);
   box-shadow: 0 0 20px rgba(115, 12, 28, 0.16);
 }
 
@@ -392,6 +410,58 @@ tbody tr.excluded-row td {
 
 .severity-badge.low,
 .severity-badge.info {
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+/* COMPOUND BADGE (tyre compound -- Setup tab's pace summary/stints/delta
+   tables) -- real Pirelli convention: soft=red, medium=yellow, hard=white,
+   intermediate=green, wet=blue. Same visual convention as .confidence/
+   .severity-badge above (bordered, colored text on a faint tint). */
+
+.compound-badge {
+  height: fit-content;
+  padding: var(--space-2);
+  border: 1px solid currentColor;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.compound-badge.soft {
+  background: rgba(232, 56, 90, 0.1);
+  color: var(--blood-text);
+  box-shadow: 0 0 20px rgba(232, 56, 90, 0.1);
+}
+
+.compound-badge.medium {
+  background: rgba(240, 201, 58, 0.09);
+  color: var(--compound-medium);
+  box-shadow: 0 0 20px rgba(240, 201, 58, 0.08);
+}
+
+.compound-badge.hard {
+  background: rgba(232, 232, 236, 0.07);
+  color: var(--compound-hard);
+  box-shadow: none;
+}
+
+.compound-badge.intermediate {
+  background: rgba(81, 224, 127, 0.07);
+  color: var(--green);
+  box-shadow: 0 0 20px rgba(81, 224, 127, 0.08);
+}
+
+.compound-badge.wet {
+  background: rgba(74, 158, 255, 0.09);
+  color: var(--compound-wet);
+  box-shadow: 0 0 20px rgba(74, 158, 255, 0.08);
+}
+
+.compound-badge.unknown {
   background: rgba(255, 255, 255, 0.045);
   color: var(--muted);
   box-shadow: none;
@@ -494,7 +564,11 @@ tbody tr.excluded-row td {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* auto-fit (not auto-fill): auto-fill reserves phantom empty column
+     tracks even when there are only 1-2 real controls, squeezing them to
+     minmax's floor instead of letting them stretch to fill the row --
+     clipped longer option text (e.g. "Stint 1 -> 2 (Lap 32)") as a result. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--space-4);
 }
 

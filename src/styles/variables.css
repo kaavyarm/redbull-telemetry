@@ -23,9 +23,23 @@
   --blood-mid: #650918;
   --blood-bright: #8b0e1f;
   --blood-glow: rgba(115, 12, 28, 0.28);
+  /* --blood-bright measures 2.17:1 against --bg -- fails WCAG AA's 4.5:1 for
+     text. Fine for backgrounds/borders/glows (no contrast requirement
+     there), but anywhere it's the actual text color needs this brighter
+     sibling instead (5.11:1, still reads as the same brand red). */
+  --blood-text: #e8385a;
 
   --amber: #c89132;
   --green: #51e07f;
+
+  /* Pirelli's real dry/wet compound colors (soft/medium/hard/intermediate/
+     wet) -- soft reuses --blood-text (it's the same red) and intermediate
+     reuses --green (already the right hue); medium/hard/wet are new,
+     chosen to read clearly here rather than matching literal tire-sidewall
+     hue, all confirmed 4.5:1+ against --bg. */
+  --compound-medium: #f0c93a;
+  --compound-hard: #e8e8ec;
+  --compound-wet: #4a9eff;
 
   /* HUD/system accent -- distinct from --blood (the brand color), used for
      gauges, live-status indicators, and ambient motion. Red Bull red stays

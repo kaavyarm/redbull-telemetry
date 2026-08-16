@@ -94,9 +94,16 @@ def _build_context(conn, session_id: int) -> dict:
 
     red_bull_brake_pct_by_driver = _brake_pct_on_fastest_lap(conn, session_id, red_bull_driver_ids)
 
+    # Rule functions only ever see driver_id ("hadjar", "max_verstappen") --
+    # the message text they build needs real names, not the raw slug, so
+    # this is passed through and looked up via rules._name().
+    drivers = _read(conn, "select id, full_name from public.drivers")
+    driver_names = dict(zip(drivers["id"], drivers["full_name"], strict=True))
+
     return {
         "session_id": session_id,
         "red_bull_driver_ids": red_bull_driver_ids,
+        "driver_names": driver_names,
         "degradation_with_team": degradation_with_team,
         "time_left_on_table_by_driver": time_left_on_table_by_driver,
         "red_bull_sector_laps": red_bull_sector_laps,

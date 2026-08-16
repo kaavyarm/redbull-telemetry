@@ -6,7 +6,7 @@ import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack"
 import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
 import RadialGauge from "../../components/hud/RadialGauge";
 
-function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
+function TelemetryTab({ sessionId, lapId, driverId, driverName, lapNumber }) {
   const { status, data: rows, error } = useAsync(
     () => (lapId ? getLapTelemetry(sessionId, lapId) : Promise.resolve([])),
     [sessionId, lapId]
@@ -51,7 +51,7 @@ function TelemetryTab({ sessionId, lapId, driverId, lapNumber }) {
     <div className="section-card">
       <div className="chart-header">
         <div>
-          <h3>{driverId} — Lap {lapNumber}</h3>
+          <h3>{driverName ?? driverId} — Lap {lapNumber}</h3>
           <span>
             {rows.length} samples, {series[series.length - 1].timeS.toFixed(1)}s
             {lapExclusion && ` · excluded (${lapExclusion.category}: ${lapExclusion.reason})`}

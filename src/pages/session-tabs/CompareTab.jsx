@@ -13,6 +13,8 @@ import TelemetryPanelStack from "../../components/telemetry/TelemetryPanelStack"
 import TrackMapPanel from "../../components/telemetry/TrackMapPanel";
 import AnimatedNumber from "../../components/hud/AnimatedNumber";
 
+const RED_BULL_TEAM_ID = "red_bull";
+
 function lapLabel(lap, driverName) {
   const time = lap.lap_time ? parsePgInterval(lap.lap_time).toFixed(3) + "s" : "no time";
   return `${driverName} — Lap ${lap.lap_number} (${time})`;
@@ -50,12 +52,47 @@ function CompareTab({ sessionId }) {
     [allLaps]
   );
 
-  // Default to the first two timed laps once they've loaded. Adjusted
-  // during render (guarded by the null checks below) rather than in a
-  // useEffect -- see hooks/useAsync.js's comment on why that avoids an
+  // Default to the two Red Bull drivers' fastest timed laps -- comparing a
+  // driver against themselves (the old first-two-laps-in-driver_id-order
+  // default) is a meaningless first impression for the app's flagship
+  // comparison feature. Degrades gracefully but never back to a
+  // self-compare: if only one Red Bull driver has a timed lap this session
+  // (e.g. a DNF), pairs them with the next-fastest other driver; if neither
+  // Red Bull driver does, falls back to the two fastest laps overall from
+  // two different drivers.
+  const defaultLapIds = useMemo(() => {
+    if (!timedLaps.length) return [null, null];
+
+    const fastestByDriver = new Map();
+    for (const l of timedLaps) {
+      const current = fastestByDriver.get(l.driver_id);
+      if (!current || parsePgInterval(l.lap_time) < parsePgInterval(current.lap_time)) {
+        fastestByDriver.set(l.driver_id, l);
+      }
+    }
+    const fastestOverall = [...fastestByDriver.values()].sort(
+      (a, b) => parsePgInterval(a.lap_time) - parsePgInterval(b.lap_time)
+    );
+
+    const rbDriverIds = new Set(
+      (results || []).filter((r) => r.team_id === RED_BULL_TEAM_ID).map((r) => r.driver_id)
+    );
+    const rbLaps = fastestOverall.filter((l) => rbDriverIds.has(l.driver_id));
+
+    if (rbLaps.length >= 2) return [rbLaps[0].id, rbLaps[1].id];
+    if (rbLaps.length === 1) {
+      const other = fastestOverall.find((l) => l.driver_id !== rbLaps[0].driver_id);
+      if (other) return [rbLaps[0].id, other.id];
+    }
+    if (fastestOverall.length >= 2) return [fastestOverall[0].id, fastestOverall[1].id];
+    return [timedLaps[0].id, timedLaps[1]?.id ?? timedLaps[0].id];
+  }, [results, timedLaps]);
+
+  // Adjusted during render (guarded by the null checks below) rather than in
+  // a useEffect -- see hooks/useAsync.js's comment on why that avoids an
   // unnecessary extra render on load.
-  if (lapAId === null && timedLaps.length) setLapAId(timedLaps[0].id);
-  if (lapBId === null && timedLaps.length) setLapBId(timedLaps[1]?.id ?? timedLaps[0].id);
+  if (lapAId === null && timedLaps.length) setLapAId(defaultLapIds[0]);
+  if (lapBId === null && timedLaps.length) setLapBId(defaultLapIds[1]);
 
   const lapA = timedLaps.find((l) => l.id === lapAId);
   const lapB = timedLaps.find((l) => l.id === lapBId);

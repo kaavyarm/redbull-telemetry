@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 
 from insights.rules import (
+    _name,
     evaluate_all_rules,
     rule_braking_efficiency_vs_teammate,
     rule_pace_consistency_vs_teammate,
@@ -112,6 +113,43 @@ def test_teammate_rule_needs_at_least_three_shared_laps():
     ])
     context = {"session_id": 1, "red_bull_driver_ids": ["per", "ver"], "red_bull_sector_laps": laps}
     assert rule_sector_time_vs_teammate(context) == []
+
+
+def test_teammate_rule_message_uses_full_names_when_available():
+    laps = _sector_laps([
+        ("ver", 1, 30.0, 35.0, 28.0),
+        ("per", 1, 30.5, 35.6, 28.0),
+        ("ver", 2, 30.1, 35.1, 28.1),
+        ("per", 2, 30.6, 35.7, 28.1),
+        ("ver", 3, 30.0, 35.0, 28.0),
+        ("per", 3, 30.5, 35.6, 28.0),
+    ])
+    context = {
+        "session_id": 1,
+        "red_bull_driver_ids": ["per", "ver"],
+        "red_bull_sector_laps": laps,
+        "driver_names": {"ver": "Max Verstappen", "per": "Sergio Perez"},
+    }
+    out = rule_sector_time_vs_teammate(context)
+    sector2 = [f for f in out if f["subject"]["sector"] == "sector2"][0]
+    assert "Sergio Perez" in sector2["message"]
+    assert "Max Verstappen" in sector2["message"]
+
+
+# ---------------------------------------------------------------------------
+# _name()
+# ---------------------------------------------------------------------------
+
+def test_name_resolves_from_driver_names():
+    assert _name({"driver_names": {"ver": "Max Verstappen"}}, "ver") == "Max Verstappen"
+
+
+def test_name_falls_back_to_raw_id_when_unmapped():
+    assert _name({"driver_names": {"ver": "Max Verstappen"}}, "unknown") == "unknown"
+
+
+def test_name_falls_back_to_raw_id_when_context_has_no_driver_names():
+    assert _name({"session_id": 1}, "ver") == "ver"
 
 
 # ---------------------------------------------------------------------------

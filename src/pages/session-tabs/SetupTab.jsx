@@ -11,6 +11,7 @@ import { useAsync } from "../../hooks/useAsync";
 import { parsePgInterval } from "../../utils/telemetry";
 import { formatDelta } from "../../utils/format";
 import ConfidenceBadge from "../../components/ConfidenceBadge";
+import CompoundBadge from "../../components/CompoundBadge";
 import RadialGauge from "../../components/hud/RadialGauge";
 import Sparkline from "../../components/hud/Sparkline";
 import ExportButton from "../../components/ExportButton";
@@ -168,7 +169,7 @@ function SetupTab({ sessionId }) {
             <tbody>
               {compounds.map((c) => (
                 <tr key={c.compound}>
-                  <td>{c.compound}</td>
+                  <td><CompoundBadge compound={c.compound} /></td>
                   <td>{c.stint_count}</td>
                   <td>{c.total_clean_laps}</td>
                   <td>{seconds(c.avg_pace)}</td>
@@ -186,41 +187,43 @@ function SetupTab({ sessionId }) {
           <h3>Stints</h3>
           <ExportButton filename="stints.csv" rows={stints} columns={STINTS_CSV_COLUMNS} />
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Driver</th>
-              <th>Stint</th>
-              <th>Compound</th>
-              <th>Laps</th>
-              <th>Clean laps</th>
-              <th>Avg pace</th>
-              <th>Fastest</th>
-              <th>Trend</th>
-              <th>Degradation (s/lap)</th>
-              <th>Confidence</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stints.map((s) => {
-              const confidence = confidenceByStint.get(`${s.driver_id}-${s.stint_number}`);
-              return (
-                <tr key={`${s.driver_id}-${s.stint_number}`}>
-                  <td>{s.drivers?.full_name ?? s.driver_id}</td>
-                  <td>{s.stint_number}</td>
-                  <td>{s.compound ?? <ConfidenceBadge confidence="pending">unknown</ConfidenceBadge>}</td>
-                  <td>{s.lap_count}</td>
-                  <td>{s.clean_lap_count}</td>
-                  <td>{seconds(s.avg_clean_lap_time)}</td>
-                  <td>{seconds(s.fastest_clean_lap_time)}</td>
-                  <td><Sparkline values={lapTimesByStint.get(`${s.driver_id}-${s.stint_number}`)} /></td>
-                  <td>{s.degradation_seconds_per_lap !== null ? Number(s.degradation_seconds_per_lap).toFixed(3) : "—"}</td>
-                  <td>{confidence ? <ConfidenceBadge confidence={confidence}>{confidence}</ConfidenceBadge> : "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Stint</th>
+                <th>Compound</th>
+                <th>Laps</th>
+                <th>Clean laps</th>
+                <th>Avg pace</th>
+                <th>Fastest</th>
+                <th>Trend</th>
+                <th>Degradation (s/lap)</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stints.map((s) => {
+                const confidence = confidenceByStint.get(`${s.driver_id}-${s.stint_number}`);
+                return (
+                  <tr key={`${s.driver_id}-${s.stint_number}`}>
+                    <td>{s.drivers?.full_name ?? s.driver_id}</td>
+                    <td>{s.stint_number}</td>
+                    <td><CompoundBadge compound={s.compound} /></td>
+                    <td>{s.lap_count}</td>
+                    <td>{s.clean_lap_count}</td>
+                    <td>{seconds(s.avg_clean_lap_time)}</td>
+                    <td>{seconds(s.fastest_clean_lap_time)}</td>
+                    <td><Sparkline values={lapTimesByStint.get(`${s.driver_id}-${s.stint_number}`)} /></td>
+                    <td>{s.degradation_seconds_per_lap !== null ? Number(s.degradation_seconds_per_lap).toFixed(3) : "—"}</td>
+                    <td>{confidence ? <ConfidenceBadge confidence={confidence}>{confidence}</ConfidenceBadge> : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {deltaStatus === "success" && revisionDeltas.length > 0 && (
@@ -242,9 +245,9 @@ function SetupTab({ sessionId }) {
                 <tr key={`${d.driver_id}-${d.stint_number}`}>
                   <td>{d.drivers?.full_name ?? d.driver_id}</td>
                   <td>{d.stint_number}</td>
-                  <td>{d.prev_compound ?? "—"}</td>
-                  <td>{d.compound ?? "—"}</td>
-                  <td>{d.next_compound ?? "—"}</td>
+                  <td><CompoundBadge compound={d.prev_compound} /></td>
+                  <td><CompoundBadge compound={d.compound} /></td>
+                  <td><CompoundBadge compound={d.next_compound} /></td>
                   <td>{formatDelta(d.pace_delta_vs_prev_stint, "s", 3)}</td>
                 </tr>
               ))}

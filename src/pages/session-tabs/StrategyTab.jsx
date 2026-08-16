@@ -8,6 +8,47 @@ import AnimatedNumber from "../../components/hud/AnimatedNumber";
 const RED_BULL_TEAM_ID = "red_bull";
 const LOW_CONFIDENCE = new Set(["insufficient_data", "low"]);
 
+// Picks the first (driver, pit-stop) pair, scanning ONLY Red Bull drivers
+// (never falling through to the rest of the field -- an earlier version of
+// this did, and defaulted a Red Bull strategy tool to Fernando Alonso the
+// moment neither Red Bull driver had a clean-confidence pair), whose stints
+// on both sides both have usable degradation confidence, so the tab opens
+// on a working example instead of the "insufficient data" warning. Falls
+// back to the first Red Bull driver's first pit stop (the original
+// unconditional default) if no Red Bull combination has good data -- the
+// honest warning is still correct to show when that's genuinely the case.
+function computeDefaultSelection(results, stints, degradationByStint) {
+  if (!results?.length || !stints?.length) return null;
+  const rbDrivers = results.filter((r) => r.team_id === RED_BULL_TEAM_ID);
+  let fallback = null;
+  for (const r of rbDrivers) {
+    const driverStints = stints
+      .filter((s) => s.driver_id === r.driver_id)
+      .sort((a, b) => a.stint_number - b.stint_number);
+    for (let i = 0; i < driverStints.length - 1; i++) {
+      const stintA = driverStints[i];
+      const stintB = driverStints[i + 1];
+      if (!fallback) fallback = { driverId: r.driver_id, transitionIndex: i };
+      const degA = degradationByStint.get(`${r.driver_id}-${stintA.stint_number}`);
+      const degB = degradationByStint.get(`${r.driver_id}-${stintB.stint_number}`);
+      // A missing row (degradation never computed for a too-short stint)
+      // is just as unusable as an explicit low-confidence one -- treating
+      // "missing" as "fine" here previously picked stint pairs that could
+      // never actually simulate, landing on the same "not enough data"
+      // message the smart default was meant to avoid.
+      const usable = (deg) => deg && !LOW_CONFIDENCE.has(deg.confidence);
+      if (usable(degA) && usable(degB)) {
+        return { driverId: r.driver_id, transitionIndex: i };
+      }
+    }
+  }
+  // Neither Red Bull driver has even one pit-stop transition (e.g. both
+  // retired on lap 1) -- still default to a Red Bull driver rather than
+  // leaving the picker empty; the existing "not enough stints" state
+  // handles the rest.
+  return fallback ?? (rbDrivers[0] ? { driverId: rbDrivers[0].driver_id, transitionIndex: 0 } : null);
+}
+
 // "What if we'd pitted lap N instead" -- projects lap times outside the
 // laps actually run in each stint using that stint's own fitted
 // degradation trend (src/utils/strategy.js), and compares the projected
@@ -25,19 +66,6 @@ function StrategyTab({ sessionId }) {
     [sessionId]
   );
 
-  const [driverId, setDriverId] = useState(null);
-  const defaultDriverId = useMemo(() => {
-    if (!results?.length) return null;
-    const rb = results.find((r) => r.team_id === RED_BULL_TEAM_ID);
-    return (rb ?? results[0]).driver_id;
-  }, [results]);
-  const effectiveDriverId = driverId ?? defaultDriverId;
-
-  const { data: laps } = useAsync(
-    () => (effectiveDriverId ? getLaps(sessionId, effectiveDriverId) : Promise.resolve([])),
-    [sessionId, effectiveDriverId]
-  );
-
   const degradationByStint = useMemo(() => {
     const map = new Map();
     for (const row of degradationRows || []) {
@@ -46,14 +74,30 @@ function StrategyTab({ sessionId }) {
     return map;
   }, [degradationRows]);
 
+  // Plain call, not useMemo -- a cheap scan (a couple of drivers x a
+  // handful of stints each), and chaining useMemo off degradationByStint
+  // (itself derived) is exactly what trips React Compiler's
+  // preserve-manual-memoization check, same as the other derived values
+  // below.
+  const defaultSelection = computeDefaultSelection(results, stints, degradationByStint);
+
+  const [driverId, setDriverId] = useState(null);
+  const effectiveDriverId = driverId ?? defaultSelection?.driverId ?? null;
+
+  const { data: laps } = useAsync(
+    () => (effectiveDriverId ? getLaps(sessionId, effectiveDriverId) : Promise.resolve([])),
+    [sessionId, effectiveDriverId]
+  );
+
   const driverStints = useMemo(
     () => (stints || []).filter((s) => s.driver_id === effectiveDriverId).sort((a, b) => a.stint_number - b.stint_number),
     [stints, effectiveDriverId]
   );
 
   const transitions = driverStints.slice(0, -1).map((stintA, i) => ({ stintA, stintB: driverStints[i + 1] }));
-  const [transitionIndex, setTransitionIndex] = useState(0);
-  const transition = transitions[Math.min(transitionIndex, transitions.length - 1)] ?? null;
+  const [transitionIndex, setTransitionIndex] = useState(null);
+  const effectiveTransitionIndex = transitionIndex ?? defaultSelection?.transitionIndex ?? 0;
+  const transition = transitions[Math.min(effectiveTransitionIndex, transitions.length - 1)] ?? null;
 
   // Plain derived values, not useMemo -- these are cheap scans over a
   // single stint's worth of laps (tens of rows at most), not expensive
@@ -135,7 +179,7 @@ function StrategyTab({ sessionId }) {
           <div className="control-row">
             <label>Pit stop</label>
             <select
-              value={transitionIndex}
+              value={effectiveTransitionIndex}
               onChange={(e) => {
                 setTransitionIndex(Number(e.target.value));
                 setCandidateLap(null);

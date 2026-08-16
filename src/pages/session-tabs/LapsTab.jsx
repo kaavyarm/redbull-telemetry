@@ -18,6 +18,8 @@ function LapsTab({ sessionId, onViewTelemetry }) {
   const [driverId, setDriverId] = useState(null);
 
   const effectiveDriverId = driverId ?? results?.[0]?.driver_id ?? null;
+  const effectiveDriverName =
+    (results || []).find((r) => r.driver_id === effectiveDriverId)?.drivers?.full_name ?? effectiveDriverId;
 
   const { status, data: laps, error } = useAsync(
     () => (effectiveDriverId ? getLapTimeEvolution(sessionId, effectiveDriverId) : Promise.resolve([])),
@@ -76,34 +78,36 @@ function LapsTab({ sessionId, onViewTelemetry }) {
           <div className="table-toolbar">
             <ExportButton filename={`laps-${effectiveDriverId}.csv`} rows={laps} columns={LAPS_CSV_COLUMNS} />
           </div>
-          <table className="laps-table">
-            <thead>
-              <tr>
-                <th>Lap</th>
-                <th>Time</th>
-                <th>Δ prev</th>
-                <th>Rank</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {laps.map((l) => (
-                <tr key={l.lap_number} className={l.is_excluded ? "excluded-row" : ""}>
-                  <td>{l.lap_number}</td>
-                  <td>{l.lap_time ? parsePgInterval(l.lap_time).toFixed(3) : "—"}</td>
-                  <td>{l.delta_to_prev_lap ? parsePgInterval(l.delta_to_prev_lap).toFixed(3) : "—"}</td>
-                  <td>{l.rank_in_lap ?? "—"}</td>
-                  <td>{l.is_excluded ? (l.exclusion_categories || []).join(", ") : "clean"}</td>
-                  <td>
-                    <button className="secondary-button" onClick={() => onViewTelemetry(l.lap_id, effectiveDriverId, l.lap_number)}>
-                      Telemetry
-                    </button>
-                  </td>
+          <div className="table-scroll">
+            <table className="laps-table">
+              <thead>
+                <tr>
+                  <th>Lap</th>
+                  <th>Time</th>
+                  <th>Δ prev</th>
+                  <th>Rank</th>
+                  <th>Status</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {laps.map((l) => (
+                  <tr key={l.lap_number} className={l.is_excluded ? "excluded-row" : ""}>
+                    <td>{l.lap_number}</td>
+                    <td>{l.lap_time ? parsePgInterval(l.lap_time).toFixed(3) : "—"}</td>
+                    <td>{l.delta_to_prev_lap ? parsePgInterval(l.delta_to_prev_lap).toFixed(3) : "—"}</td>
+                    <td>{l.rank_in_lap ?? "—"}</td>
+                    <td>{l.is_excluded ? (l.exclusion_categories || []).join(", ") : "clean"}</td>
+                    <td>
+                      <button className="secondary-button" onClick={() => onViewTelemetry(l.lap_id, effectiveDriverId, effectiveDriverName, l.lap_number)}>
+                        Telemetry
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

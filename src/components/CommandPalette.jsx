@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { listSessions } from "../lib/api";
 import { useAsync } from "../hooks/useAsync";
-import { sessionTypeLabel } from "../utils/format";
+import { sessionTypeLabel, sessionTypeRank } from "../utils/format";
 
 // Small hand-rolled fuzzy scorer (substring match scores higher than an
 // in-order subsequence match) rather than a library -- the result set is a
@@ -35,7 +35,15 @@ function CommandPalette({ onSelectSession, onClose }) {
         score: fuzzyScore(query, `${s.event_name} ${sessionTypeLabel(s.session_type)} ${s.season}`),
       }))
       .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score)
+      // Relevance first; on a tie (every session ties at score=1 on an
+      // empty query, the initial browse state) fall back to most-recent
+      // weekend first, then chronological session order within it, instead
+      // of whatever order the API happened to return.
+      .sort((a, b) =>
+        b.score - a.score ||
+        b.session.round_number - a.session.round_number ||
+        sessionTypeRank(a.session.session_type) - sessionTypeRank(b.session.session_type)
+      )
       .slice(0, 8)
       .map((r) => r.session);
   }, [sessions, query]);

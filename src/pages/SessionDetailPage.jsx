@@ -14,10 +14,10 @@ const TABS = ["Results", "Laps", "Telemetry", "Compare", "Setup", "Strategy", "I
 function SessionDetailPage({ sessionId, onBack }) {
   const { status, data: session } = useAsync(() => getSession(sessionId), [sessionId]);
   const [tab, setTab] = useState("Results");
-  const [selectedLap, setSelectedLap] = useState(null); // { lapId, driverId, lapNumber }
+  const [selectedLap, setSelectedLap] = useState(null); // { lapId, driverId, driverName, lapNumber }
 
-  function viewTelemetry(lapId, driverId, lapNumber) {
-    setSelectedLap({ lapId, driverId, lapNumber });
+  function viewTelemetry(lapId, driverId, driverName, lapNumber) {
+    setSelectedLap({ lapId, driverId, driverName, lapNumber });
     setTab("Telemetry");
   }
 
@@ -50,6 +50,7 @@ function SessionDetailPage({ sessionId, onBack }) {
           sessionId={sessionId}
           lapId={selectedLap?.lapId ?? null}
           driverId={selectedLap?.driverId ?? null}
+          driverName={selectedLap?.driverName ?? null}
           lapNumber={selectedLap?.lapNumber ?? null}
         />
       )}

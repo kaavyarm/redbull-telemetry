@@ -38,34 +38,36 @@ function ResultsTab({ sessionId }) {
       <div className="table-toolbar">
         <ExportButton filename="results.csv" rows={results} columns={RESULTS_CSV_COLUMNS} />
       </div>
-      <table className="results-table">
-        <thead>
-          <tr>
-            <th>Pos</th>
-            <th>Driver</th>
-            <th>Team</th>
-            <th>Laps</th>
-            <th>Time / Gap</th>
-            <th>Points</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {results.map((r) => (
-            <tr key={r.driver_id}>
-              <td>{r.classified_position ?? "—"}</td>
-              <td>{r.drivers?.full_name ?? r.driver_id}</td>
-              <td style={{ color: r.teams?.color ? `#${r.teams.color}` : undefined }}>
-                {r.teams?.name ?? r.team_id}
-              </td>
-              <td>{r.laps_completed ?? "—"}</td>
-              <td>{formatLapTime(r.q3 ?? r.q2 ?? r.q1 ?? r.finish_time)}</td>
-              <td>{formatMetric(r.points, "", 0)}</td>
-              <td>{r.status}</td>
+      <div className="table-scroll">
+        <table className="results-table">
+          <thead>
+            <tr>
+              <th>Pos</th>
+              <th>Driver</th>
+              <th>Team</th>
+              <th>Laps</th>
+              <th>Time / Gap</th>
+              <th>Points</th>
+              <th>Status</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {results.map((r) => (
+              <tr key={r.driver_id}>
+                <td>{r.classified_position ?? "—"}</td>
+                <td>{r.drivers?.full_name ?? r.driver_id}</td>
+                <td style={{ color: r.teams?.color ? `#${r.teams.color}` : undefined }}>
+                  {r.teams?.name ?? r.team_id}
+                </td>
+                <td>{r.laps_completed ?? "—"}</td>
+                <td>{formatLapTime(r.q3 ?? r.q2 ?? r.q1 ?? r.finish_time)}</td>
+                <td>{formatMetric(r.points, "", 0)}</td>
+                <td>{r.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

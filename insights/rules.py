@@ -16,6 +16,15 @@ from insights.aggregation import RED_BULL_TEAM_ID, compute_field_average_degrada
 SECTOR_COLUMNS = ("sector1_time_s", "sector2_time_s", "sector3_time_s")
 
 
+def _name(context: dict, driver_id: str) -> str:
+    """Display name for a driver_id in message text -- rule functions only
+    ever handle raw ids ("hadjar", "max_verstappen"), but the persisted
+    message should read the way the card title already does. Falls back to
+    the raw id if this driver isn't in context (defensive, shouldn't happen
+    for anyone in session_results)."""
+    return (context.get("driver_names") or {}).get(driver_id, driver_id)
+
+
 def _finding(session_id, finding_type, severity, subject_driver_id, compared_against_type, message, *,
              compared_against_driver_id=None, compared_against_team_id=None,
              metric_value=None, threshold_value=None, unit=None, subject=None):
@@ -103,8 +112,8 @@ def rule_sector_time_vs_teammate(context: dict) -> list[dict]:
         sector_label = sector_col.replace("_time_s", "")
         findings.append(_finding(
             session_id, "sector_time_vs_teammate", severity, slower, "teammate",
-            f"{slower} is {magnitude:.3f}s slower than teammate {faster} in {sector_label} "
-            f"(median over {len(deltas)} shared clean laps).",
+            f"{_name(context, slower)} is {magnitude:.3f}s slower than teammate {_name(context, faster)} "
+            f"in {sector_label} (median over {len(deltas)} shared clean laps).",
             compared_against_driver_id=faster, metric_value=magnitude, threshold_value=0.15, unit="s",
             subject={"sector": sector_label},
         ))
@@ -125,7 +134,8 @@ def rule_time_left_on_table(context: dict) -> list[dict]:
         severity = "high" if value > threshold * 2 else "medium"
         findings.append(_finding(
             session_id, "time_left_on_table", severity, driver_id, "session_optimal",
-            f"{driver_id} left {value:.3f}s on the table this session vs. the theoretical optimal lap.",
+            f"{_name(context, driver_id)} left {value:.3f}s on the table this session vs. the theoretical "
+            f"optimal lap.",
             metric_value=float(value), threshold_value=threshold, unit="s",
         ))
     return findings
@@ -153,8 +163,8 @@ def rule_braking_efficiency_vs_teammate(context: dict) -> list[dict]:
     severity = "high" if rel_diff > 0.35 else "medium"
     return [_finding(
         session_id, "braking_efficiency_vs_teammate", severity, subject, "teammate",
-        f"{subject} spent {higher_pct:.1f}% of their fastest lap on the brakes, "
-        f"{rel_diff * 100:.0f}% more than teammate {compared} ({lower_pct:.1f}%).",
+        f"{_name(context, subject)} spent {higher_pct:.1f}% of their fastest lap on the brakes, "
+        f"{rel_diff * 100:.0f}% more than teammate {_name(context, compared)} ({lower_pct:.1f}%).",
         compared_against_driver_id=compared, metric_value=float(higher_pct), threshold_value=float(lower_pct),
         unit="pct",
     )]
@@ -190,8 +200,9 @@ def rule_pace_consistency_vs_teammate(context: dict) -> list[dict]:
         severity = "high" if ratio > 2.5 else "medium" if ratio > 1.8 else "low"
         findings.append(_finding(
             session_id, "pace_consistency_vs_teammate", severity, less_consistent, "teammate",
-            f"{less_consistent}'s lap time in stint {int(stint_number)} varies {ratio:.1f}x more than "
-            f"teammate {more_consistent}'s ({less_std:.3f}s vs {more_std:.3f}s std dev over {lap_count} laps).",
+            f"{_name(context, less_consistent)}'s lap time in stint {int(stint_number)} varies {ratio:.1f}x "
+            f"more than teammate {_name(context, more_consistent)}'s ({less_std:.3f}s vs {more_std:.3f}s "
+            f"std dev over {lap_count} laps).",
             compared_against_driver_id=more_consistent, metric_value=less_std, threshold_value=more_std, unit="s",
             subject={"stint_number": int(stint_number)},
         ))

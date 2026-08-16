@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { signOut, listSessions, getFindingsSeverityBySession } from "../lib/api";
 import { useAsync } from "../hooks/useAsync";
-import { sessionTypeLabel, severityRank } from "../utils/format";
+import { sessionTypeLabel, sessionTypeRank, severityRank } from "../utils/format";
 
 const NAV_PAGES = ["Overview", "Sessions", "Trends"];
 
@@ -15,6 +15,11 @@ function groupBySeasonAndWeekend(sessions) {
       weekends.set(key, { key, event_name: s.event_name, sessions: [] });
     }
     weekends.get(key).sessions.push(s);
+  }
+  for (const seasonWeekends of seasons.values()) {
+    for (const weekend of seasonWeekends.values()) {
+      weekend.sessions.sort((a, b) => sessionTypeRank(a.session_type) - sessionTypeRank(b.session_type));
+    }
   }
   return [...seasons.entries()]
     .sort((a, b) => b[0] - a[0])
