@@ -86,7 +86,7 @@ function TrackMapPanel({ series, hoverTimeS, seriesB = null, telemetrySeries = n
         <polyline
           points={path.points.map((p) => `${p.sx},${p.sy}`).join(" ")}
           fill="none"
-          stroke="var(--blood-bright)"
+          stroke="var(--blue-bright)"
           strokeWidth={2}
           strokeLinejoin="round"
         />
@@ -112,7 +112,7 @@ function TrackMapPanel({ series, hoverTimeS, seriesB = null, telemetrySeries = n
 
         {brakingPoints.map((bp, i) => {
           const p = path.toScreen(bp);
-          return <circle key={i} className="track-braking-marker" cx={p.sx} cy={p.sy} r={3} fill="var(--blood-bright)" />;
+          return <circle key={i} className="track-braking-marker" cx={p.sx} cy={p.sy} r={3} fill="var(--blue-bright)" />;
         })}
         {pathB && brakingPointsB.map((bp, i) => {
           const p = pathB.toScreen(bp);
@@ -126,11 +126,11 @@ function TrackMapPanel({ series, hoverTimeS, seriesB = null, telemetrySeries = n
               cx={cursor.sx}
               cy={cursor.sy}
               r={10}
-              fill="var(--blood-bright)"
+              fill="var(--blue-bright)"
               opacity={0.35}
               style={{ transformBox: "fill-box", transformOrigin: "center" }}
             />
-            <circle cx={cursor.sx} cy={cursor.sy} r={5} fill="var(--blood-bright)" stroke="#fff" strokeWidth={1.5} />
+            <circle cx={cursor.sx} cy={cursor.sy} r={5} fill="var(--blue-bright)" stroke="#fff" strokeWidth={1.5} />
           </>
         )}
         {cursorB && (

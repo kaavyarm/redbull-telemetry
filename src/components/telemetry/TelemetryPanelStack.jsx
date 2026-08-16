@@ -43,7 +43,7 @@ function TelemetryPanelStack({ series, syncId, compareMode = false, onHover }) {
                     <Line
                       type={lineType}
                       dataKey={`a${channel.key[0].toUpperCase()}${channel.key.slice(1)}`}
-                      stroke="var(--blood-bright)"
+                      stroke="var(--blue-bright)"
                       dot={false}
                       strokeWidth={1.5}
                       isAnimationActive={false}

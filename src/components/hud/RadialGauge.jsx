@@ -8,24 +8,24 @@ const prefersReducedMotion =
 const STROKE_WIDTH = 8;
 
 const TONE_COLOR = {
-  cyan: "var(--cyan)",
+  yellow: "var(--yellow)",
   green: "var(--green)",
   amber: "var(--amber)",
-  blood: "var(--blood-bright)",
+  blue: "var(--blue-bright)",
 };
 
 const TONE_GLOW = {
-  cyan: "var(--cyan-glow)",
+  yellow: "var(--yellow-glow)",
   green: "rgba(81, 224, 127, 0.35)",
   amber: "rgba(200, 145, 50, 0.35)",
-  blood: "rgba(139, 14, 31, 0.4)",
+  blue: "rgba(71, 129, 215, 0.4)",
 };
 
 // Hand-rolled SVG gauge, same construction pattern as TrackMapPanel.jsx
 // (sized viewBox, stroke-based drawing) rather than Recharts' RadialBarChart
 // -- full control over the glow filter and the fill animation below, which
 // Recharts' chart-oriented radial component isn't built for.
-function RadialGauge({ value, min = 0, max = 100, label, unit = "", tone = "cyan", size = 120, formatValue }) {
+function RadialGauge({ value, min = 0, max = 100, label, unit = "", tone = "yellow", size = 120, formatValue }) {
   const radius = (size - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -48,8 +48,8 @@ function RadialGauge({ value, min = 0, max = 100, label, unit = "", tone = "cyan
 
   const effectivePct = prefersReducedMotion ? pct : animatedPct;
   const offset = circumference * (1 - effectivePct);
-  const color = TONE_COLOR[tone] ?? TONE_COLOR.cyan;
-  const glow = TONE_GLOW[tone] ?? TONE_GLOW.cyan;
+  const color = TONE_COLOR[tone] ?? TONE_COLOR.yellow;
+  const glow = TONE_GLOW[tone] ?? TONE_GLOW.yellow;
   const display = hasValue ? (formatValue ? formatValue(Number(value)) : Number(value).toFixed(2)) : "N/A";
 
   return (

@@ -2,7 +2,7 @@
 // sit inside a dense table cell (e.g. a stint's lap-by-lap pace) where a
 // full Recharts panel would be overkill; same "hand-roll it" precedent as
 // RadialGauge/AnimatedNumber, not a charting-library job.
-function Sparkline({ values, width = 72, height = 22, color = "var(--cyan)" }) {
+function Sparkline({ values, width = 72, height = 22, color = "var(--yellow)" }) {
   const valid = (values || []).filter((v) => v !== null && v !== undefined && !Number.isNaN(v));
   if (valid.length < 2) {
     return <span className="sparkline-empty">—</span>;

@@ -64,7 +64,7 @@ function TelemetryTab({ sessionId, lapId, driverId, driverName, lapNumber }) {
             max={2}
             unit="s"
             label="Left on table"
-            tone="cyan"
+            tone="yellow"
             size={92}
             formatValue={(v) => v.toFixed(3)}
           />

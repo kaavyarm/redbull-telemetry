@@ -13,27 +13,36 @@
 
   --border: rgba(255, 255, 255, 0.105);
   --border-soft: rgba(255, 255, 255, 0.06);
-  --border-blood: rgba(115, 12, 28, 0.48);
+  --border-blue: rgba(71, 129, 215, 0.48);
 
   --text: #f0f0f2;
   --muted: #91949d;
   --muted-2: #5e626c;
 
-  --blood: #430610;
-  --blood-mid: #650918;
-  --blood-bright: #8b0e1f;
-  --blood-glow: rgba(115, 12, 28, 0.28);
-  /* --blood-bright measures 2.17:1 against --bg -- fails WCAG AA's 4.5:1 for
-     text. Fine for backgrounds/borders/glows (no contrast requirement
-     there), but anywhere it's the actual text color needs this brighter
-     sibling instead (5.11:1, still reads as the same brand red). */
-  --blood-text: #e8385a;
+  /* Racing blue -- Red Bull Racing's real brand identity (the team is
+     blue-primary; red is an accent from the bulls logo, not the base
+     color -- see the rebrand plan). --blue-bright is the actual 2026
+     livery blue, the first departure from matte navy since 2015. Both it
+     and --red below pass WCAG AA directly as text (5.35:1 / 5.37:1
+     against --bg), unlike the old --blood-bright (2.17:1), so neither
+     needs a separate high-contrast text variant. */
+  --blue: #0d2038;
+  --blue-mid: #1c3f6e;
+  --blue-bright: #4781d7;
+  --blue-glow: rgba(71, 129, 215, 0.28);
+
+  /* Red Bull red -- kept as the semantic alert/negative-delta accent
+     (severity=high, errors, "slower" deltas), not the brand's primary
+     chrome color anymore. Real Red Bull red, not an arbitrary dark red. */
+  --red: #ff0c49;
+  --red-glow: rgba(255, 12, 73, 0.28);
+  --border-red: rgba(255, 12, 73, 0.48);
 
   --amber: #c89132;
   --green: #51e07f;
 
   /* Pirelli's real dry/wet compound colors (soft/medium/hard/intermediate/
-     wet) -- soft reuses --blood-text (it's the same red) and intermediate
+     wet) -- soft reuses --red (it's the same red) and intermediate
      reuses --green (already the right hue); medium/hard/wet are new,
      chosen to read clearly here rather than matching literal tire-sidewall
      hue, all confirmed 4.5:1+ against --bg. */
@@ -41,14 +50,14 @@
   --compound-hard: #e8e8ec;
   --compound-wet: #4a9eff;
 
-  /* HUD/system accent -- distinct from --blood (the brand color), used for
-     gauges, live-status indicators, and ambient motion. Red Bull red stays
-     the identity color; cyan is the "system is watching" layer on top of
-     it, the same way JARVIS-style HUDs sit a cool accent over a warm
-     branded suit rather than replacing it. */
-  --cyan: #35d9ff;
-  --cyan-glow: rgba(53, 217, 255, 0.28);
-  --cyan-dim: rgba(53, 217, 255, 0.12);
+  /* HUD/system accent -- distinct from --blue (the brand color), used for
+     gauges, live-status indicators, and ambient motion. Red Bull yellow is
+     the "system is watching" layer on top of the brand blue, the same way
+     JARVIS-style HUDs sit a warm accent over a cool branded suit -- the
+     inverse of the old red-brand/cyan-accent pairing, now that the brand
+     itself is blue. Also the real Red Bull yellow, unlike the old cyan. */
+  --yellow: #ffc800;
+  --yellow-glow: rgba(255, 200, 0, 0.28);
 
   /* 4/8pt spacing scale -- every padding/margin/gap in layout.css and
      shared.css is meant to resolve to one of these rather than a one-off

@@ -88,8 +88,8 @@ function TrendsPage() {
                   <YAxis yAxisId="position" stroke="var(--muted)" fontSize={11} reversed domain={["auto", "auto"]} />
                   <YAxis yAxisId="points" orientation="right" stroke="var(--muted)" fontSize={11} domain={[0, "auto"]} />
                   <Tooltip contentStyle={{ background: "#0a0b0d", border: "1px solid var(--border)" }} />
-                  <Line yAxisId="position" type="monotone" dataKey="avgPosition" name="Avg finishing position" stroke="var(--blood-bright)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                  <Line yAxisId="points" type="monotone" dataKey="totalPoints" name="Points scored" stroke="var(--cyan)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                  <Line yAxisId="position" type="monotone" dataKey="avgPosition" name="Avg finishing position" stroke="var(--blue-bright)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                  <Line yAxisId="points" type="monotone" dataKey="totalPoints" name="Points scored" stroke="var(--yellow)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>

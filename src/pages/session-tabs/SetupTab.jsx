@@ -133,7 +133,7 @@ function SetupTab({ sessionId }) {
               max={degradationSummary.domainMax}
               unit=" s/lap"
               label="Red Bull avg"
-              tone="blood"
+              tone="blue"
               formatValue={(v) => v.toFixed(3)}
             />
             <RadialGauge
@@ -142,7 +142,7 @@ function SetupTab({ sessionId }) {
               max={degradationSummary.domainMax}
               unit=" s/lap"
               label="Field avg"
-              tone="cyan"
+              tone="yellow"
               formatValue={(v) => v.toFixed(3)}
             />
           </div>

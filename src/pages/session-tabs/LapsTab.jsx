@@ -70,7 +70,7 @@ function LapsTab({ sessionId, onViewTelemetry }) {
                   contentStyle={{ background: "#0a0b0d", border: "1px solid var(--border)" }}
                   formatter={(value) => `${value.toFixed(3)}s`}
                 />
-                <Line type="monotone" dataKey="lapTimeS" stroke="var(--blood-bright)" dot={{ r: 2 }} strokeWidth={2} />
+                <Line type="monotone" dataKey="lapTimeS" stroke="var(--blue-bright)" dot={{ r: 2 }} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </div>

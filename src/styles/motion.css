@@ -28,7 +28,7 @@
 
 @keyframes scan-once {
   from {
-    box-shadow: 0 0 0 1px var(--cyan-glow), 0 0 28px var(--cyan-glow);
+    box-shadow: 0 0 0 1px var(--yellow-glow), 0 0 28px var(--yellow-glow);
   }
   to {
     box-shadow: 0 0 0 1px transparent, 0 0 0 transparent;
